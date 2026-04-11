@@ -6,10 +6,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 export const Sidebar = () => {
+  const pathname = usePathname();
+
   return (
     <div className="w-72 h-screen border-r border-white/5 bg-[#050505] flex flex-col p-8 flex-shrink-0 z-20">
       
-      <Link href="/" className="flex items-center gap-4 mb-14 group">
+      <Link href="/dashboard" className="flex items-center gap-4 mb-14 group">
         <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] group-hover:shadow-[0_0_35px_-5px_rgba(99,102,241,0.8)] transition-all">
           <PlaySquare className="w-5 h-5 text-white" />
         </div>
@@ -19,8 +21,8 @@ export const Sidebar = () => {
       </Link>
 
       <nav className="flex flex-col gap-3 flex-grow">
-        <NavItem href="/dashboard" icon={<Home />} label="Dashboard" active />
-        <NavItem href="/dashboard" icon={<FolderHeart />} label="Projects" />
+        <NavItem href="/dashboard" icon={<Home />} label="Dashboard" active={pathname === "/dashboard"} />
+        <NavItem href="/dashboard" icon={<FolderHeart />} label="Projects" active={pathname.startsWith("/project")} />
         <NavItem href="#" icon={<Settings />} label="Settings" />
       </nav>
 
@@ -54,3 +56,4 @@ const NavItem = ({ icon, label, active, href = "#" }: { icon: React.ReactNode; l
     </Link>
   );
 };
+

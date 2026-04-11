@@ -1,5 +1,7 @@
 "use client";
 import React, { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Film,
@@ -214,6 +216,19 @@ export const VideoStepPanel = ({
               >
                 Back to Preview
               </motion.button>
+            </motion.div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="mt-6"
+            >
+              <Link
+                href="/dashboard"
+                className="text-[13px] font-semibold text-indigo-400/60 hover:text-indigo-400 transition-colors duration-200"
+              >
+                ← Back to Dashboard
+              </Link>
             </motion.div>
           </motion.div>
         )}

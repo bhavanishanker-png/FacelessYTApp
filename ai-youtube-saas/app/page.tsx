@@ -1,16 +1,54 @@
 "use client";
 import React from "react";
+import Link from "next/link";
+import { motion } from "framer-motion";
 import { TextFlippingBoardDemo } from "@/components/TextFlippingBoardDemo";
 import { NoiseBackgroundDemo } from "@/components/NoiseBackgroundDemo";
 import { ThreeDCardDemo } from "@/components/ThreeDCardDemo";
 import { CarouselDemo } from "@/components/CarouselDemo";
 import { AnimatedTestimonialsDemo } from "@/components/AnimatedTestimonialsDemo";
-import { Zap, LayoutTemplate, PlayCircle, Clock } from "lucide-react";
+import { Zap, LayoutTemplate, PlayCircle, Clock, PlaySquare, ArrowRight } from "lucide-react";
 import "./globals.css"
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-[#030303] text-white font-sans overflow-x-hidden selection:bg-indigo-500/30">
+
+      {/* NAVBAR */}
+      <motion.nav
+        initial={{ opacity: 0, y: -12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 lg:px-16 py-4 bg-[#030303]/70 backdrop-blur-xl border-b border-white/[0.04]"
+      >
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_25px_-5px_rgba(99,102,241,0.4)] group-hover:shadow-[0_0_35px_-5px_rgba(99,102,241,0.7)] transition-all">
+            <PlaySquare className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-lg font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 group-hover:to-white transition-all">
+            AI Studio
+          </span>
+        </Link>
+
+        <div className="flex items-center gap-3">
+          <Link
+            href="/login"
+            className="px-5 py-2 rounded-full text-[13px] font-semibold text-white/50 hover:text-white/90 transition-colors duration-200"
+          >
+            Login
+          </Link>
+          <Link href="/signup">
+            <motion.div
+              whileHover={{ scale: 1.04 }}
+              whileTap={{ scale: 0.96 }}
+              className="px-5 py-2 rounded-full bg-gradient-to-r from-indigo-500 to-indigo-600 text-white text-[13px] font-bold tracking-wide shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30 transition-all flex items-center gap-1.5"
+            >
+              Get Started
+              <ArrowRight className="w-3.5 h-3.5" />
+            </motion.div>
+          </Link>
+        </div>
+      </motion.nav>
       
       {/* 1. HERO SECTION */}
       <section className="relative w-full pt-32 pb-24 flex flex-col items-center justify-center min-h-[60vh] gap-16 px-6">

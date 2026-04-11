@@ -22,7 +22,7 @@ export const NoiseBackgroundDemo = ({ text = "Start Creating Videos" }: { text?:
         <p className="text-lg leading-8 text-white/50 mb-10 max-w-xl mx-auto font-medium">
           Join thousands of automated creators who generate months of content in a single afternoon.
         </p>
-        <Link href="/dashboard">
+        <Link href="/login">
           <motion.div 
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
