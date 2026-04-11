@@ -8,24 +8,17 @@ import { HookStepPanel } from "./HookStepPanel";
 import { ScriptStepPanel } from "./ScriptStepPanel";
 import { ScenesStepPanel } from "./ScenesStepPanel";
 import { VoiceStepPanel } from "./VoiceStepPanel";
+import { VideoStepPanel } from "./VideoStepPanel";
 
 const STEPS = ["idea", "hook", "script", "scenes", "voice", "video"] as const;
 type StepValue = typeof STEPS[number];
 
-const STEP_PLACEHOLDERS: Record<string, { title: string; desc: string }> = {
-  script: { title: "Script Writer", desc: "Generate a complete, retention-optimised script with pacing cues and engagement markers." },
-  scenes: { title: "Scene Planner", desc: "Break your script into visual scenes with B-roll suggestions and transition timing." },
-  voice: { title: "Voice Studio", desc: "Select and synthesise a premium AI voice perfectly matched to your content." },
-  video: { title: "Video Export", desc: "Render your final video with subtitles, music, and branding — ready to upload." },
-};
 
 export const ProjectWorkspace = ({ project }: { project: any }) => {
   const [viewingStep, setViewingStep] = useState<StepValue>(project.currentStep as StepValue);
   const [selectedIdea, setSelectedIdea] = useState<string>("Why you are wasting your life");
   const [selectedHook, setSelectedHook] = useState<string>("You are wasting your life without realizing it");
   const [selectedScript, setSelectedScript] = useState<string>("");
-
-  const isPlaceholderStep = viewingStep !== "idea" && viewingStep !== "hook" && viewingStep !== "script" && viewingStep !== "scenes" && viewingStep !== "voice";
 
   return (
     <div className="flex w-full h-screen bg-[#030303] overflow-hidden font-sans selection:bg-indigo-500/30">
@@ -128,17 +121,14 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                 </div>
               )}
 
-              {isPlaceholderStep && (
-                <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-10 relative overflow-hidden flex flex-col items-center justify-center text-center">
-                  <div className="w-16 h-16 rounded-2xl bg-white/[0.02] flex items-center justify-center border border-white/[0.04] mb-8">
-                    <div className="w-6 h-6 bg-indigo-500/20 rounded-lg animate-pulse" />
-                  </div>
-                  <h2 className="text-2xl font-bold text-white/80 tracking-tight mb-3">
-                    {STEP_PLACEHOLDERS[viewingStep]?.title ?? `${viewingStep} Panel`}
-                  </h2>
-                  <p className="text-white/30 max-w-md leading-relaxed text-[15px] font-medium">
-                    {STEP_PLACEHOLDERS[viewingStep]?.desc ?? "This step is coming soon."}
-                  </p>
+              {viewingStep === "video" && (
+                <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
+                  <VideoStepPanel
+                    projectTitle={project.title}
+                    onApprove={() => {
+                      // Final step — project is complete
+                    }}
+                  />
                 </div>
               )}
             </motion.div>
