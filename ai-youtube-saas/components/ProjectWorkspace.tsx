@@ -5,6 +5,9 @@ import { Sidebar } from "./Sidebar";
 import { StepperNavigation } from "./StepperNavigation";
 import { IdeaStepPanel } from "./IdeaStepPanel";
 import { HookStepPanel } from "./HookStepPanel";
+import { ScriptStepPanel } from "./ScriptStepPanel";
+import { ScenesStepPanel } from "./ScenesStepPanel";
+import { VoiceStepPanel } from "./VoiceStepPanel";
 
 const STEPS = ["idea", "hook", "script", "scenes", "voice", "video"] as const;
 type StepValue = typeof STEPS[number];
@@ -19,8 +22,10 @@ const STEP_PLACEHOLDERS: Record<string, { title: string; desc: string }> = {
 export const ProjectWorkspace = ({ project }: { project: any }) => {
   const [viewingStep, setViewingStep] = useState<StepValue>(project.currentStep as StepValue);
   const [selectedIdea, setSelectedIdea] = useState<string>("Why you are wasting your life");
+  const [selectedHook, setSelectedHook] = useState<string>("You are wasting your life without realizing it");
+  const [selectedScript, setSelectedScript] = useState<string>("");
 
-  const isPlaceholderStep = viewingStep !== "idea" && viewingStep !== "hook";
+  const isPlaceholderStep = viewingStep !== "idea" && viewingStep !== "hook" && viewingStep !== "script" && viewingStep !== "scenes" && viewingStep !== "voice";
 
   return (
     <div className="flex w-full h-screen bg-[#030303] overflow-hidden font-sans selection:bg-indigo-500/30">
@@ -76,9 +81,48 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                 <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
                   <HookStepPanel
                     selectedIdea={selectedIdea}
-                    onApprove={() => {
+                    onApprove={(hook?: string) => {
+                      if (hook) setSelectedHook(hook);
                       if (project.currentStep === "hook") project.currentStep = "script";
                       setViewingStep("script");
+                    }}
+                  />
+                </div>
+              )}
+
+              {viewingStep === "script" && (
+                <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
+                  <ScriptStepPanel
+                    selectedIdea={selectedIdea}
+                    selectedHook={selectedHook}
+                    onApprove={(script?: string) => {
+                      if (script) setSelectedScript(script);
+                      if (project.currentStep === "script") project.currentStep = "scenes";
+                      setViewingStep("scenes");
+                    }}
+                  />
+                </div>
+              )}
+
+              {viewingStep === "scenes" && (
+                <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
+                  <ScenesStepPanel
+                    scriptPreview={selectedScript || "Most people think they are working hard... But in reality, they are just busy. Every day, you wake up, scroll your phone, delay your goals..."}
+                    onApprove={() => {
+                      if (project.currentStep === "scenes") project.currentStep = "voice";
+                      setViewingStep("voice");
+                    }}
+                  />
+                </div>
+              )}
+
+              {viewingStep === "voice" && (
+                <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
+                  <VoiceStepPanel
+                    scriptPreview={selectedScript || "Most people think they are working hard... But in reality, they are just busy."}
+                    onApprove={() => {
+                      if (project.currentStep === "voice") project.currentStep = "video";
+                      setViewingStep("video");
                     }}
                   />
                 </div>

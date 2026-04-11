@@ -19,7 +19,7 @@ export const HookStepPanel = ({
   onApprove,
 }: {
   selectedIdea: string;
-  onApprove: () => void;
+  onApprove: (hook?: string) => void;
 }) => {
   const [hooks, setHooks] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -224,7 +224,7 @@ export const HookStepPanel = ({
             </button>
 
             <motion.button
-              onClick={onApprove}
+              onClick={() => onApprove(editedHook)}
               disabled={!hasApproval}
               whileHover={hasApproval ? { scale: 1.02 } : {}}
               whileTap={hasApproval ? { scale: 0.98 } : {}}

@@ -48,7 +48,7 @@ const NavItem = ({ icon, label, active, href = "#" }: { icon: React.ReactNode; l
             : "text-white/40 hover:bg-white/5 hover:text-white/90 hover:translate-x-1"
         )}
       >
-        {React.cloneElement(icon as React.ReactElement, { className: "w-4 h-4" })}
+        {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-4 h-4" })}
         {label}
       </div>
     </Link>
