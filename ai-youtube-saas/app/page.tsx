@@ -7,6 +7,7 @@ import { ThreeDCardDemo } from "@/components/ThreeDCardDemo";
 import { CarouselDemo } from "@/components/CarouselDemo";
 import { AnimatedTestimonialsDemo } from "@/components/AnimatedTestimonialsDemo";
 import { Zap, LayoutTemplate, PlayCircle, Clock, PlaySquare, ArrowRight } from "lucide-react";
+import { GridPattern } from "@/components/ui/grid-pattern";
 import "./globals.css"
 
 export default function LandingPage() {
@@ -50,12 +51,19 @@ export default function LandingPage() {
       </motion.nav>
       
       {/* 1. HERO SECTION */}
-      <section className="relative w-full pt-36 pb-24 flex flex-col items-center justify-center min-h-[85vh] px-6">
+      <section className="relative w-full pt-36 pb-24 flex flex-col items-center justify-center min-h-[85vh] px-6 overflow-hidden">
         {/* Ambient glow */}
         <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80%] max-w-3xl h-[600px] bg-indigo-500/10 blur-[150px] -z-10 rounded-full mix-blend-screen pointer-events-none" />
 
+        <GridPattern
+          width={40}
+          height={40}
+          strokeDasharray="4 2"
+          className="absolute inset-0 opacity-20 [mask-image:radial-gradient(600px_circle_at_center,white,transparent)]"
+        />
+
         {/* Structured content */}
-        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+        <div className="relative z-10 flex flex-col items-center text-center max-w-4xl mx-auto">
 
           {/* Tagline badge */}
           <motion.div
