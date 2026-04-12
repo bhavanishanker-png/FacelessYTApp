@@ -151,18 +151,30 @@ const WaveformVisualiser = ({
 
 export const VoiceStepPanel = ({
   scriptPreview,
+  initialVoice,
   onApprove,
 }: {
   scriptPreview: string;
-  onApprove: () => void;
+  initialVoice?: any;
+  onApprove: (data?: any) => Promise<void>;
 }) => {
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1.0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
+  const [generationCount, setGenerationCount] = useState(0);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (initialVoice?.type && !selectedVoiceId && !hasGenerated && generationCount === 0) {
+      setSelectedVoiceId(initialVoice.type);
+      if (initialVoice.settings?.speed) setSpeed(initialVoice.settings.speed);
+      setHasGenerated(true);
+    }
+  }, [initialVoice, selectedVoiceId, hasGenerated, generationCount]);
 
   const selectedVoice = VOICES.find((v) => v.id === selectedVoiceId) ?? null;
 
@@ -215,6 +227,7 @@ export const VoiceStepPanel = ({
     setTimeout(() => {
       setHasGenerated(true);
       setIsGenerating(false);
+      setGenerationCount(c => c + 1);
     }, 2200);
   };
 
@@ -544,20 +557,34 @@ export const VoiceStepPanel = ({
         )}
 
         <motion.button
-          onClick={onApprove}
-          disabled={!hasGenerated || isGenerating}
-          whileHover={hasGenerated && !isGenerating ? { scale: 1.02 } : {}}
-          whileTap={hasGenerated && !isGenerating ? { scale: 0.98 } : {}}
+          onClick={async () => {
+            if (hasGenerated && !isGenerating && !isApproving) {
+              setIsApproving(true);
+              await onApprove({ voiceType: selectedVoiceId, settings: { speed } });
+              setIsApproving(false);
+            }
+          }}
+          disabled={!hasGenerated || isGenerating || isApproving}
+          whileHover={hasGenerated && !isGenerating && !isApproving ? { scale: 1.02 } : {}}
+          whileTap={hasGenerated && !isGenerating && !isApproving ? { scale: 0.98 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
             "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
-            hasGenerated && !isGenerating
+            hasGenerated && !isGenerating && !isApproving
               ? `bg-gradient-to-r ${selectedVoice ? selectedVoice.color.gradient : "from-pink-500 to-rose-500"} text-white shadow-lg ${selectedVoice ? selectedVoice.color.glow : "shadow-pink-500/15"} hover:shadow-pink-500/25`
               : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
           )}
         >
-          Approve & Continue
-          <ChevronRight className="w-4 h-4" />
+          {isApproving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+            </>
+          ) : (
+            <>
+              Approve & Continue
+              <ChevronRight className="w-4 h-4" />
+            </>
+          )}
         </motion.button>
       </div>
     </div>

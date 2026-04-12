@@ -36,10 +36,12 @@ const MOCK_SCENES = [
 
 export const VideoStepPanel = ({
   projectTitle,
+  initialVideoUrl,
   onApprove,
 }: {
   projectTitle: string;
-  onApprove: () => void;
+  initialVideoUrl?: string;
+  onApprove: (videoUrl?: string) => Promise<void>;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -49,8 +51,11 @@ export const VideoStepPanel = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const [videoKey, setVideoKey] = useState(0);
+
+  const currentVideoUrl = initialVideoUrl || MOCK_VIDEO_URL;
 
   /* ── Video controls ── */
   const togglePlay = () => {
@@ -135,7 +140,7 @@ export const VideoStepPanel = ({
 
   const handleDownload = () => {
     const a = document.createElement("a");
-    a.href = MOCK_VIDEO_URL;
+    a.href = currentVideoUrl;
     a.download = `${projectTitle.replace(/\s+/g, "_")}_final.mp4`;
     a.target = "_blank";
     document.body.appendChild(a);
@@ -143,9 +148,11 @@ export const VideoStepPanel = ({
     document.body.removeChild(a);
   };
 
-  const handleFinish = () => {
+  const handleFinish = async () => {
+    setIsApproving(true);
+    await onApprove(currentVideoUrl);
+    setIsApproving(false);
     setIsFinished(true);
-    onApprove();
   };
 
   const formatTime = (t: number) => {
@@ -287,7 +294,7 @@ export const VideoStepPanel = ({
             <video
               key={videoKey}
               ref={videoRef}
-              src={MOCK_VIDEO_URL}
+              src={currentVideoUrl}
               className="w-full h-full object-contain"
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
@@ -487,19 +494,27 @@ export const VideoStepPanel = ({
 
         <motion.button
           onClick={handleFinish}
-          disabled={isRegenerating}
-          whileHover={!isRegenerating ? { scale: 1.02 } : {}}
-          whileTap={!isRegenerating ? { scale: 0.98 } : {}}
+          disabled={isRegenerating || isApproving}
+          whileHover={!isRegenerating && !isApproving ? { scale: 1.02 } : {}}
+          whileTap={!isRegenerating && !isApproving ? { scale: 0.98 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
             "px-7 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2.5 transition-all duration-200",
-            !isRegenerating
+            !isRegenerating && !isApproving
               ? "bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 hover:shadow-emerald-500/30"
               : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
           )}
         >
-          <Sparkles className="w-4 h-4" />
-          Approve & Finish
+          {isApproving ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              Approve & Finish
+            </>
+          )}
         </motion.button>
       </div>
     </div>

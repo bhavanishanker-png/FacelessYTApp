@@ -16,9 +16,9 @@ type StepValue = typeof STEPS[number];
 
 export const ProjectWorkspace = ({ project }: { project: any }) => {
   const [viewingStep, setViewingStep] = useState<StepValue>(project.currentStep as StepValue);
-  const [selectedIdea, setSelectedIdea] = useState<string>("Why you are wasting your life");
-  const [selectedHook, setSelectedHook] = useState<string>("You are wasting your life without realizing it");
-  const [selectedScript, setSelectedScript] = useState<string>("");
+  const [selectedIdea, setSelectedIdea] = useState<string>(project?.steps?.idea?.userSelected || "");
+  const [selectedHook, setSelectedHook] = useState<string>(project?.steps?.hook?.editedHook || project?.steps?.hook?.selectedHook || "");
+  const [selectedScript, setSelectedScript] = useState<string>(project?.steps?.script?.content || "");
 
   return (
     <div className="flex w-full h-screen bg-[#030303] overflow-hidden font-sans selection:bg-indigo-500/30">
@@ -62,11 +62,21 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
             >
               {viewingStep === "idea" && (
                 <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
-                  <IdeaStepPanel onApprove={(idea) => {
-                    setSelectedIdea(idea);
-                    if (project.currentStep === "idea") project.currentStep = "hook";
-                    setViewingStep("hook");
-                  }} />
+                  <IdeaStepPanel 
+                    initialIdea={selectedIdea}
+                    onApprove={async (idea) => {
+                      if (idea) {
+                        await fetch('/api/project/idea', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ projectId: project._id, idea })
+                        });
+                        setSelectedIdea(idea);
+                      }
+                      if (project.currentStep === "idea") project.currentStep = "hook";
+                      setViewingStep("hook");
+                    }} 
+                  />
                 </div>
               )}
 
@@ -74,8 +84,16 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                 <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
                   <HookStepPanel
                     selectedIdea={selectedIdea}
-                    onApprove={(hook?: string) => {
-                      if (hook) setSelectedHook(hook);
+                    initialHook={selectedHook}
+                    onApprove={async (hook?: string) => {
+                      if (hook) {
+                        await fetch('/api/project/hook', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ projectId: project._id, hook })
+                        });
+                        setSelectedHook(hook);
+                      }
                       if (project.currentStep === "hook") project.currentStep = "script";
                       setViewingStep("script");
                     }}
@@ -88,8 +106,16 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                   <ScriptStepPanel
                     selectedIdea={selectedIdea}
                     selectedHook={selectedHook}
-                    onApprove={(script?: string) => {
-                      if (script) setSelectedScript(script);
+                    initialScript={selectedScript}
+                    onApprove={async (script?: string) => {
+                      if (script) {
+                        await fetch('/api/project/script', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ projectId: project._id, content: script })
+                        });
+                        setSelectedScript(script);
+                      }
                       if (project.currentStep === "script") project.currentStep = "scenes";
                       setViewingStep("scenes");
                     }}
@@ -101,7 +127,15 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                 <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
                   <ScenesStepPanel
                     scriptPreview={selectedScript || "Most people think they are working hard... But in reality, they are just busy. Every day, you wake up, scroll your phone, delay your goals..."}
-                    onApprove={() => {
+                    initialScenes={project?.steps?.scenes}
+                    onApprove={async (scenes?: any[]) => {
+                      if (scenes && scenes.length > 0) {
+                        await fetch('/api/project/scenes', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ projectId: project._id, scenes })
+                        });
+                      }
                       if (project.currentStep === "scenes") project.currentStep = "voice";
                       setViewingStep("voice");
                     }}
@@ -113,7 +147,15 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                 <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
                   <VoiceStepPanel
                     scriptPreview={selectedScript || "Most people think they are working hard... But in reality, they are just busy."}
-                    onApprove={() => {
+                    initialVoice={project?.steps?.voice}
+                    onApprove={async (voiceData?: any) => {
+                      if (voiceData) {
+                        await fetch('/api/project/voice', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ projectId: project._id, ...voiceData })
+                        });
+                      }
                       if (project.currentStep === "voice") project.currentStep = "video";
                       setViewingStep("video");
                     }}
@@ -125,8 +167,16 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                 <div className="h-full rounded-2xl bg-[#0A0A0A] border border-white/[0.04] p-8 md:p-10 relative overflow-hidden">
                   <VideoStepPanel
                     projectTitle={project.title}
-                    onApprove={() => {
-                      // Final step — project is complete
+                    initialVideoUrl={project?.steps?.video?.videoUrl}
+                    onApprove={async (videoUrl?: string) => {
+                      if (videoUrl) {
+                        await fetch('/api/project/video', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ projectId: project._id, videoUrl })
+                        });
+                      }
+                      if (project.status !== "completed") project.status = "completed";
                     }}
                   />
                 </div>

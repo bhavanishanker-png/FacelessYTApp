@@ -91,16 +91,26 @@ const SCENE_COLORS = [
 
 export const ScenesStepPanel = ({
   scriptPreview,
+  initialScenes,
   onApprove,
 }: {
   scriptPreview: string;
-  onApprove: () => void;
+  initialScenes?: Scene[];
+  onApprove: (scenes?: Scene[]) => Promise<void>;
 }) => {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [generationCount, setGenerationCount] = useState(0);
+
+  useEffect(() => {
+    if (initialScenes && initialScenes.length > 0 && !hasGenerated && generationCount === 0) {
+      setScenes(initialScenes);
+      setHasGenerated(true);
+    }
+  }, [initialScenes, hasGenerated, generationCount]);
 
   const selectedScene = scenes[selectedIndex] ?? null;
 
@@ -437,20 +447,34 @@ export const ScenesStepPanel = ({
               </button>
 
               <motion.button
-                onClick={onApprove}
-                disabled={scenes.length === 0 || isGenerating}
-                whileHover={scenes.length > 0 ? { scale: 1.02 } : {}}
-                whileTap={scenes.length > 0 ? { scale: 0.98 } : {}}
+                onClick={async () => {
+                  if (scenes.length > 0 && !isGenerating && !isApproving) {
+                    setIsApproving(true);
+                    await onApprove(scenes);
+                    setIsApproving(false);
+                  }
+                }}
+                disabled={scenes.length === 0 || isGenerating || isApproving}
+                whileHover={scenes.length > 0 && !isApproving ? { scale: 1.02 } : {}}
+                whileTap={scenes.length > 0 && !isApproving ? { scale: 0.98 } : {}}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                   "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
-                  scenes.length > 0 && !isGenerating
+                  scenes.length > 0 && !isGenerating && !isApproving
                     ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/15 hover:shadow-cyan-500/25"
                     : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
                 )}
               >
-                Approve & Continue
-                <ChevronRight className="w-4 h-4" />
+                {isApproving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    Approve & Continue
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
               </motion.button>
             </motion.div>
           </motion.div>

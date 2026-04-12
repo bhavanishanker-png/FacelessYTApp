@@ -22,12 +22,27 @@ const TAG_STYLES: Record<string, string> = {
   evergreen: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
 };
 
-export const IdeaStepPanel = ({ onApprove }: { onApprove: (idea: string) => void }) => {
+export const IdeaStepPanel = ({
+  initialIdea,
+  onApprove 
+}: { 
+  initialIdea?: string;
+  onApprove: (idea: string) => Promise<void> 
+}) => {
   const [niche, setNiche] = useState("");
   const [ideas, setIdeas] = useState<typeof MOCK_IDEAS>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [generationCount, setGenerationCount] = useState(0);
+
+  // Prefill if initialIdea exists
+  React.useEffect(() => {
+    if (initialIdea && ideas.length === 0 && !isGenerating && generationCount === 0) {
+      setIdeas([{ title: initialIdea, tag: "saved", icon: Sparkles }]);
+      setSelectedIndex(0);
+    }
+  }, [initialIdea, ideas.length, isGenerating, generationCount]);
 
   const handleGenerate = (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -212,20 +227,35 @@ export const IdeaStepPanel = ({ onApprove }: { onApprove: (idea: string) => void
             </button>
 
             <motion.button
-              onClick={() => { if (selectedIndex !== null) onApprove(ideas[selectedIndex].title); }}
-              disabled={selectedIndex === null}
-              whileHover={selectedIndex !== null ? { scale: 1.02 } : {}}
-              whileTap={selectedIndex !== null ? { scale: 0.98 } : {}}
+              onClick={async () => {
+                if (selectedIndex !== null && !isApproving) {
+                  setIsApproving(true);
+                  await onApprove(ideas[selectedIndex].title);
+                  setIsApproving(false);
+                }
+              }}
+              disabled={selectedIndex === null || isApproving}
+              whileHover={selectedIndex !== null && !isApproving ? { scale: 1.02 } : {}}
+              whileTap={selectedIndex !== null && !isApproving ? { scale: 0.98 } : {}}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               className={cn(
                 "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
-                selectedIndex !== null
+                selectedIndex !== null && !isApproving
                   ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
                   : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
               )}
             >
-              Approve & Continue
-              <ChevronRight className="w-4 h-4" />
+              {isApproving ? (
+                 <>
+                   <Loader2 className="w-4 h-4 animate-spin" />
+                   Saving...
+                 </>
+              ) : (
+                <>
+                  Approve & Continue
+                  <ChevronRight className="w-4 h-4" />
+                </>
+              )}
             </motion.button>
           </motion.div>
         )}

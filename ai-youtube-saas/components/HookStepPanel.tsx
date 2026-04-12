@@ -16,16 +16,28 @@ const MOCK_HOOKS = [
 
 export const HookStepPanel = ({
   selectedIdea,
+  initialHook,
   onApprove,
 }: {
   selectedIdea: string;
-  onApprove: (hook?: string) => void;
+  initialHook?: string;
+  onApprove: (hook?: string) => Promise<void>;
 }) => {
   const [hooks, setHooks] = useState<string[]>([]);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [editedHook, setEditedHook] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [generationCount, setGenerationCount] = useState(0);
+
+  // Initialize from saved DB state
+  useEffect(() => {
+    if (initialHook && hooks.length === 0 && !isGenerating && generationCount === 0) {
+      setHooks([initialHook]);
+      setSelectedIndex(0);
+      setEditedHook(initialHook);
+    }
+  }, [initialHook, hooks.length, isGenerating, generationCount]);
 
   // Sync textarea whenever user selects a different hook card
   useEffect(() => {
@@ -224,20 +236,34 @@ export const HookStepPanel = ({
             </button>
 
             <motion.button
-              onClick={() => onApprove(editedHook)}
-              disabled={!hasApproval}
-              whileHover={hasApproval ? { scale: 1.02 } : {}}
-              whileTap={hasApproval ? { scale: 0.98 } : {}}
+              onClick={async () => {
+                if (hasApproval && !isApproving) {
+                  setIsApproving(true);
+                  await onApprove(editedHook);
+                  setIsApproving(false);
+                }
+              }}
+              disabled={!hasApproval || isApproving}
+              whileHover={hasApproval && !isApproving ? { scale: 1.02 } : {}}
+              whileTap={hasApproval && !isApproving ? { scale: 0.98 } : {}}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               className={cn(
                 "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
-                hasApproval
+                hasApproval && !isApproving
                   ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25"
                   : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
               )}
             >
-              Approve & Continue
-              <ChevronRight className="w-4 h-4" />
+              {isApproving ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> saving...
+                </>
+              ) : (
+                <>
+                  Approve & Continue
+                  <ChevronRight className="w-4 h-4" />
+                </>
+              )}
             </motion.button>
           </motion.div>
         )}

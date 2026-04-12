@@ -96,19 +96,29 @@ Today.`;
 export const ScriptStepPanel = ({
   selectedIdea,
   selectedHook,
+  initialScript,
   onApprove,
 }: {
   selectedIdea: string;
   selectedHook: string;
-  onApprove: (script?: string) => void;
+  initialScript?: string;
+  onApprove: (script?: string) => Promise<void>;
 }) => {
   const [script, setScript] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isTransforming, setIsTransforming] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (initialScript && !script && !hasGenerated) {
+      setScript(initialScript);
+      setHasGenerated(true);
+    }
+  }, [initialScript, script, hasGenerated]);
 
   /* ── Word / line count ── */
   useEffect(() => {
@@ -427,20 +437,34 @@ export const ScriptStepPanel = ({
               </button>
 
               <motion.button
-                onClick={() => onApprove(script)}
-                disabled={!script.trim() || isToolActive}
-                whileHover={script.trim() && !isToolActive ? { scale: 1.02 } : {}}
-                whileTap={script.trim() && !isToolActive ? { scale: 0.98 } : {}}
+                onClick={async () => {
+                  if (script.trim() && !isToolActive && !isApproving) {
+                    setIsApproving(true);
+                    await onApprove(script);
+                    setIsApproving(false);
+                  }
+                }}
+                disabled={!script.trim() || isToolActive || isApproving}
+                whileHover={script.trim() && !isToolActive && !isApproving ? { scale: 1.02 } : {}}
+                whileTap={script.trim() && !isToolActive && !isApproving ? { scale: 0.98 } : {}}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                   "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
-                  script.trim() && !isToolActive
+                  script.trim() && !isToolActive && !isApproving
                     ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/15 hover:shadow-violet-500/25"
                     : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
                 )}
               >
-                Approve & Continue
-                <ChevronRight className="w-4 h-4" />
+                {isApproving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" /> Saving...
+                  </>
+                ) : (
+                  <>
+                    Approve & Continue
+                    <ChevronRight className="w-4 h-4" />
+                  </>
+                )}
               </motion.button>
             </motion.div>
           </motion.div>
