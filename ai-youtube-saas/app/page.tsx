@@ -2,7 +2,6 @@
 import React from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { TextFlippingBoardDemo } from "@/components/TextFlippingBoardDemo";
 import { NoiseBackgroundDemo } from "@/components/NoiseBackgroundDemo";
 import { ThreeDCardDemo } from "@/components/ThreeDCardDemo";
 import { CarouselDemo } from "@/components/CarouselDemo";
@@ -51,11 +50,62 @@ export default function LandingPage() {
       </motion.nav>
       
       {/* 1. HERO SECTION */}
-      <section className="relative w-full pt-32 pb-24 flex flex-col items-center justify-center min-h-[60vh] gap-16 px-6">
+      <section className="relative w-full pt-36 pb-24 flex flex-col items-center justify-center min-h-[85vh] px-6">
+        {/* Ambient glow */}
         <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[80%] max-w-3xl h-[600px] bg-indigo-500/10 blur-[150px] -z-10 rounded-full mix-blend-screen pointer-events-none" />
-        <TextFlippingBoardDemo />
-        <div className="w-full max-w-3xl mx-auto">
-          <NoiseBackgroundDemo text="Start For Free" />
+
+        {/* Structured content */}
+        <div className="flex flex-col items-center text-center max-w-4xl mx-auto">
+
+          {/* Tagline badge */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mb-8"
+          >
+            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-[12px] font-bold uppercase tracking-[0.15em] text-indigo-400/80">
+              <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              AI Video Automation Platform
+            </span>
+          </motion.div>
+
+          {/* Main heading */}
+          <motion.h1
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.25 }}
+            className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter text-white leading-[0.95] mb-8"
+          >
+            Build Faceless{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-purple-400">
+              YouTube
+            </span>{" "}
+            Channels with{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-purple-400">
+              AI
+            </span>
+          </motion.h1>
+
+          {/* Subheading */}
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.45 }}
+            className="text-lg md:text-xl text-white/40 font-medium leading-relaxed max-w-2xl mb-12"
+          >
+            Generate ideas, scripts, videos, and grow your channel — all in one place.
+          </motion.p>
+
+          {/* CTA Button */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="mb-20"
+          >
+            <NoiseBackgroundDemo text="Get Started" />
+          </motion.div>
         </div>
       </section>
 
@@ -115,7 +165,7 @@ export default function LandingPage() {
 
       {/* 6. FINAL CTA */}
       <section className="w-full pb-32 pt-10 px-6 max-w-3xl mx-auto">
-        <NoiseBackgroundDemo text="Start Creating Videos" />
+        <NoiseBackgroundDemo text="Start Creating Videos" fullWidth />
       </section>
 
     </div>
