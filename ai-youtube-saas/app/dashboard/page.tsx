@@ -5,6 +5,8 @@ import { AnimatedButton } from "@/components/AnimatedButton";
 import { ProjectCard } from "@/components/ProjectCard";
 import { CreateProjectModal } from "@/components/CreateProjectModal";
 import { Plus, Loader2 } from "lucide-react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const [projects, setProjects] = useState([]);
@@ -26,9 +28,24 @@ export default function Dashboard() {
     }
   };
 
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (status === "unauthenticated") {
+      router.push("/login");
+    } else if (status === "authenticated") {
+      fetchProjects();
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex w-full min-h-screen bg-[#030303] items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-indigo-500 mb-6" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex w-full min-h-screen bg-[#030303] font-sans selection:bg-indigo-500/30">
@@ -45,9 +62,10 @@ export default function Dashboard() {
           <header className="flex justify-between items-end mb-16">
             <div className="flex flex-col gap-2">
               <h1 className="text-5xl font-extrabold tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-white via-white/80 to-white/30">
-                Your Projects
+                Welcome, {session?.user?.name || "User"}
               </h1>
               <p className="text-white/40 font-medium tracking-wide">
+                <span className="text-white/60 mb-1 block">{session?.user?.email}</span>
                 Manage and track your AI generated video pipelines.
               </p>
             </div>

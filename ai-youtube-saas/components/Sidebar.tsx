@@ -1,9 +1,10 @@
 "use client";
 import React from "react";
-import { Home, FolderHeart, Settings, PlaySquare, Sparkles } from "lucide-react";
+import { Home, FolderHeart, Settings, PlaySquare, Sparkles, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { signOut } from "next-auth/react";
 
 export const Sidebar = () => {
   const pathname = usePathname();
@@ -24,6 +25,14 @@ export const Sidebar = () => {
         <NavItem href="/dashboard" icon={<Home />} label="Dashboard" active={pathname === "/dashboard"} />
         <NavItem href="/dashboard" icon={<FolderHeart />} label="Projects" active={pathname.startsWith("/project")} />
         <NavItem href="#" icon={<Settings />} label="Settings" />
+        
+        <button
+          onClick={() => signOut({ callbackUrl: "/login" })}
+          className="flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm text-red-400/50 hover:bg-red-500/10 hover:text-red-400 hover:translate-x-1 mt-2 text-left"
+        >
+          <LogOut className="w-4 h-4" />
+          Logout
+        </button>
       </nav>
 
       <div className="mt-auto p-5 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden group hover:border-indigo-500/30 transition-colors duration-500">
