@@ -35,9 +35,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update Project Document
-    project.steps.scenes = scenes;
-    project.currentStep = "voice";
+    // Update Project Document — scenes is now { status, data: [...] }
+    project.steps.scenes = { status: "completed", data: scenes };
+    project.currentStep = "images";
 
     await project.save();
 

@@ -220,15 +220,14 @@ export const VoiceStepPanel = ({
   }, []);
 
   /* ── Generate voiceover ── */
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!selectedVoiceId) return;
     setIsGenerating(true);
     stopPlayback();
-    setTimeout(() => {
-      setHasGenerated(true);
-      setIsGenerating(false);
-      setGenerationCount(c => c + 1);
-    }, 2200);
+    // TODO: Connect LIVE AI TTS API endpoint here when backend is wired.
+    setHasGenerated(true);
+    setIsGenerating(false);
+    setGenerationCount(c => c + 1);
   };
 
   /* ── Regenerate ── */
@@ -250,7 +249,7 @@ export const VoiceStepPanel = ({
           <div className="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center">
             <Mic className="w-4 h-4 text-pink-400" />
           </div>
-          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pink-400/70">Step 5</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-pink-400/70">Step 7</span>
         </div>
         <h2 className="text-3xl font-extrabold text-white tracking-tight mb-2">
           Voice Studio
@@ -543,18 +542,7 @@ export const VoiceStepPanel = ({
       </div>
 
       {/* ── Action Footer ── */}
-      <div className="pt-5 mt-2 border-t border-white/[0.04] flex justify-between items-center">
-        {hasGenerated ? (
-          <button
-            onClick={handleRegenerate}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.03] transition-all duration-200 font-semibold text-[13px]"
-          >
-            <RefreshCcw className="w-3.5 h-3.5" />
-            Regenerate
-          </button>
-        ) : (
-          <div />
-        )}
+      <div className="pt-5 mt-2 border-t border-white/[0.04] flex justify-end items-center">
 
         <motion.button
           onClick={async () => {

@@ -19,7 +19,7 @@ export const TextFlippingBoardDemo = () => {
       y: 0,
       rotateX: 0,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         damping: 14,
         stiffness: 120,
       },
@@ -29,7 +29,7 @@ export const TextFlippingBoardDemo = () => {
       y: 40,
       rotateX: -90,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         damping: 14,
         stiffness: 120,
       },

@@ -1,432 +1,235 @@
 "use client";
-import React, { useState, Suspense, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { motion } from "framer-motion";
-import { PlaySquare, Mail, Lock, ArrowRight, Loader2, Eye, EyeOff, Sparkles } from "lucide-react";
+import React, { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { Sparkles, Eye, EyeOff } from "lucide-react";
 
-/* ─────────────────────── Flipping Hero Text ─────────────────────── */
-
-const FlippingHeroText = () => {
-  const words = "Build faceless YouTube channels with AI".split(" ");
-
-  const container = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: { staggerChildren: 0.1, delayChildren: 0.3 },
-    },
-  };
-
-  const child = {
-    visible: {
-      opacity: 1,
-      y: 0,
-      rotateX: 0,
-      transition: { type: "spring" as const, damping: 14, stiffness: 120 },
-    },
-    hidden: {
-      opacity: 0,
-      y: 30,
-      rotateX: -90,
-      transition: { type: "spring" as const, damping: 14, stiffness: 120 },
-    },
-  };
-
-  return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="visible"
-      className="flex flex-wrap gap-x-3 gap-y-1.5 max-w-md"
-      style={{ perspective: "800px" }}
-    >
-      {words.map((word, index) => (
-        <motion.span
-          variants={child}
-          style={{ transformOrigin: "bottom" }}
-          key={index}
-          className="text-4xl lg:text-5xl font-black tracking-tighter text-white"
-        >
-          {word === "AI" ? (
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-indigo-400 to-purple-400">
-              {word}
-            </span>
-          ) : (
-            word
-          )}
-        </motion.span>
-      ))}
-    </motion.div>
-  );
-};
-
-/* ─────────────────────── Floating Particles ─────────────────────── */
-
-const FloatingParticle = ({ delay, x, y, size }: { delay: number; x: string; y: string; size: number }) => (
-  <motion.div
-    className="absolute rounded-full bg-indigo-500/20"
-    style={{ left: x, top: y, width: size, height: size }}
-    animate={{
-      y: [0, -20, 0],
-      opacity: [0.2, 0.5, 0.2],
-      scale: [1, 1.2, 1],
-    }}
-    transition={{
-      duration: 4,
-      delay,
-      repeat: Infinity,
-      ease: "easeInOut",
-    }}
-  />
-);
-
-/* ─────────────────────── Login Page Content ─────────────────────── */
-
-function LoginContent() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const { status } = useSession();
-
+export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [focusedField, setFocusedField] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
-  const [error, setError] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) return;
-    setIsLoading(true);
-    setError(null);
+    setError("");
+    setLoading(true);
+    try {
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-    const res = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
-
-    setIsLoading(false);
-
-    if (res?.error) {
-      setError("Invalid email or password");
-    } else {
-      window.location.href = "/dashboard";
+      if (res?.error) {
+        setError(res.error);
+        setLoading(false);
+      } else {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (err) {
+      setError("An unexpected error occurred.");
+      setLoading(false);
     }
   };
 
-  const isValid = email.trim().length > 0 && password.trim().length >= 6;
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.push("/dashboard");
-    }
-  }, [status, router]);
-
-  useEffect(() => {
-    const urlError = searchParams.get("error");
-    if (urlError === "OAuthCallback") {
-      setError("Google authentication failed. Please clear your browser cookies for localhost and try again.");
-    } else if (urlError) {
-      setError(`Authentication Error: ${urlError}`);
-    }
-  }, [searchParams]);
-
   return (
-    <div className="min-h-screen w-full flex bg-[#030303] font-sans">
+    <div className="min-h-screen bg-[#141313] text-[#e5e2e1] font-sans selection:bg-[#c0c1ff]/20 flex overflow-hidden">
 
-      {/* ═══════════════ LEFT SIDE — Branding ═══════════════ */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden flex-col justify-between p-12 xl:p-16">
-
-        {/* Background effects */}
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-950/40 via-[#030303] to-purple-950/30 -z-10" />
-        <div className="absolute top-[15%] left-[10%] w-[60%] h-[50%] bg-indigo-600/[0.08] blur-[180px] rounded-full mix-blend-screen pointer-events-none" />
-        <div className="absolute bottom-[5%] right-[5%] w-[40%] h-[40%] bg-purple-600/[0.06] blur-[140px] rounded-full mix-blend-screen pointer-events-none" />
-
-        {/* Grid pattern */}
-        <div
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
-            backgroundSize: "60px 60px",
-          }}
-        />
-
-        {/* Floating particles */}
-        <FloatingParticle delay={0} x="15%" y="25%" size={6} />
-        <FloatingParticle delay={1.2} x="75%" y="20%" size={4} />
-        <FloatingParticle delay={0.8} x="60%" y="70%" size={5} />
-        <FloatingParticle delay={2} x="25%" y="80%" size={3} />
-        <FloatingParticle delay={1.5} x="85%" y="50%" size={4} />
+      {/* LEFT: Cinematic Image Panel */}
+      <section className="hidden lg:flex relative w-1/2 flex-col justify-between p-16 overflow-hidden bg-[#0e0e0e]">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src="https://images.unsplash.com/photo-1487017159836-4e23ece2e4cf?w=1200&q=80"
+            alt="Cinematic Studio"
+            className="w-full h-full object-cover opacity-50 grayscale-[0.2]"
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/15 via-transparent to-[#6f00be]/10" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#141313] via-transparent to-transparent opacity-80" />
+        </div>
 
         {/* Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] group-hover:shadow-[0_0_40px_-5px_rgba(99,102,241,0.8)] transition-all">
-              <PlaySquare className="w-5 h-5 text-white" />
-            </div>
-            <h1 className="text-xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 group-hover:to-white transition-all">
-              AI Studio
-            </h1>
-          </Link>
-        </motion.div>
-
-        {/* Hero content */}
-        <div className="flex-1 flex flex-col justify-center -mt-10">
-          <FlippingHeroText />
-
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 0.5 }}
-            className="mt-8 text-white/30 text-[16px] font-medium leading-relaxed max-w-md"
-          >
-            Generate ideas, scripts, voiceovers, and videos — all from a single prompt.
-            No face, no camera, no editing skills required.
-          </motion.p>
-
-          {/* Feature pills */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.3, duration: 0.5 }}
-            className="flex flex-wrap gap-2 mt-8"
-          >
-            {["AI Scripts", "Voice Synthesis", "Auto Scenes", "One-Click Export"].map((tag, i) => (
-              <span
-                key={tag}
-                className="px-3.5 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.1em] bg-white/[0.03] text-white/25 border border-white/[0.06]"
-              >
-                {tag}
-              </span>
-            ))}
-          </motion.div>
+        <div className="relative z-10 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center shadow-[0_0_20px_rgba(99,102,241,0.4)]">
+            <Sparkles className="w-4 h-4 text-white" />
+          </div>
+          <span className="text-xl font-extrabold tracking-tighter bg-gradient-to-r from-[#c0c1ff] to-[#ddb7ff] bg-clip-text text-transparent">
+            Velora AI
+          </span>
         </div>
 
-        {/* Bottom stats */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.6, duration: 0.5 }}
-          className="flex gap-10"
-        >
-          {[
-            { value: "2,400+", label: "Videos Created" },
-            { value: "850+", label: "Active Users" },
-            { value: "98%", label: "Uptime" },
-          ].map((stat) => (
-            <div key={stat.label}>
-              <p className="text-2xl font-extrabold text-white/80 tracking-tight">{stat.value}</p>
-              <p className="text-[11px] font-medium text-white/20 uppercase tracking-[0.1em] mt-1">{stat.label}</p>
-            </div>
+        {/* Content */}
+        <div className="relative z-10 max-w-lg">
+          <h1 className="text-[3.5rem] leading-[1.1] font-bold tracking-tight text-[#e5e2e1] mb-6">
+            Join the{" "}
+            <span className="text-[#c0c1ff] italic">Velora</span> Edit
+          </h1>
+          <p className="text-lg text-[#c7c4d7] font-light leading-relaxed">
+            Step into a hyper-responsive suite designed for the next generation of visual storytelling. Precision AI tools meets editorial authority.
+          </p>
+        </div>
+
+        {/* Footer Meta */}
+        <div className="relative z-10 flex items-center gap-8 text-[#c7c4d7]/40 text-xs font-medium tracking-widest uppercase">
+          {["4K Rendering", "AI Neural Engine", "Cloud Studio"].map((item) => (
+            <span key={item} className="flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-[#c0c1ff]" />
+              {item}
+            </span>
           ))}
-        </motion.div>
-      </div>
-
-      {/* ═══════════════ RIGHT SIDE — Login Form ═══════════════ */}
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative">
-
-        {/* Subtle gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-[#050505] to-transparent lg:bg-none" />
-
-        {/* Mobile Logo */}
-        <div className="absolute top-6 left-6 lg:hidden">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-[10px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-              <PlaySquare className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-extrabold text-white/80">AI Studio</span>
-          </Link>
         </div>
+      </section>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
-          className="w-full max-w-[420px] relative z-10"
-        >
-          {/* Welcome text */}
-          <div className="mb-10">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-7 h-7 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-                <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+      {/* RIGHT: Form Panel */}
+      <section className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 md:p-24 bg-[#141313] relative">
+        {/* Ambient glows */}
+        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-[#c0c1ff]/5 blur-[120px] rounded-full pointer-events-none" />
+        <div className="absolute bottom-[10%] left-[5%] w-[30%] h-[30%] bg-[#ddb7ff]/5 blur-[100px] rounded-full pointer-events-none" />
+
+        <div className="w-full max-w-md relative z-10">
+          {/* Header */}
+          <div className="mb-12">
+            {/* Mobile logo */}
+            <div className="lg:hidden flex items-center gap-2 mb-8">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center">
+                <Sparkles className="w-3.5 h-3.5 text-white" />
               </div>
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-400/70">Welcome Back</span>
+              <span className="text-lg font-extrabold tracking-tighter bg-gradient-to-r from-[#c0c1ff] to-[#ddb7ff] bg-clip-text text-transparent">Velora AI</span>
             </div>
-            <h2 className="text-3xl font-extrabold text-white tracking-tight mb-2">
-              Sign in to your account
-            </h2>
-            <p className="text-white/30 text-[15px] font-medium">
-              Enter your credentials to access your workspace.
-            </p>
+            <h2 className="text-3xl font-bold tracking-tight text-[#e5e2e1] mb-2">Welcome Back</h2>
+            <p className="text-[#c7c4d7]">Continue your creative workflow.</p>
           </div>
 
-          {error && (
-            <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-medium text-center">
-              {error}
-            </div>
-          )}
+          <form className="space-y-6" onSubmit={handleLogin}>
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-lg flex items-center gap-2">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {error}
+              </div>
+            )}
 
-          {/* Form Card */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Social login */}
+            <div className="mb-8">
+              <motion.button
+                type="button"
+                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+                whileHover={{ borderColor: "rgba(192,193,255,0.3)" }}
+                className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl border border-[#464554]/20 hover:bg-[#2a2a2a] transition-all duration-300"
+              >
+                <span className="text-sm font-bold text-[#c7c4d7] font-mono">G</span>
+                <span className="text-sm font-medium text-[#e5e2e1]">Google</span>
+              </motion.button>
+            </div>
+
+            {/* Divider */}
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-[#464554]/10" />
+              <span className="flex-shrink mx-4 text-xs font-medium uppercase tracking-widest text-[#464554]/60">Or email</span>
+              <div className="flex-grow border-t border-[#464554]/10" />
+            </div>
 
             {/* Email */}
-            <div>
-              <label htmlFor="login-email" className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/25 mb-2.5">
-                <Mail className="w-3 h-3" />
-                Email Address
+            <div className="space-y-2">
+              <label className="text-xs font-medium tracking-wider uppercase text-[#c7c4d7]/80 ml-1" htmlFor="email">
+                Work Email
               </label>
-              <div className="relative group">
-                {/* Focus glow */}
-                <div className={cn(
-                  "absolute -inset-px rounded-xl bg-gradient-to-r from-indigo-500/30 to-purple-500/20 transition-opacity duration-300 pointer-events-none",
-                  focusedField === "email" ? "opacity-100" : "opacity-0"
-                )} />
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#908fa0] text-sm">@</span>
                 <input
-                  id="login-email"
+                  id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  onFocus={() => setFocusedField("email")}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  className="relative w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3.5 text-white text-[14px] placeholder:text-white/15 focus:outline-none focus:border-indigo-500/30 transition-all duration-200 font-medium"
+                  placeholder="name@velora.ai"
+                  className="w-full pl-10 pr-4 py-4 bg-[#0e0e0e] border border-transparent rounded-xl focus:ring-2 focus:ring-[#c0c1ff]/20 focus:bg-[#1c1b1b] transition-all placeholder:text-[#908fa0]/40 text-[#e5e2e1] outline-none text-sm"
                 />
               </div>
             </div>
 
             {/* Password */}
-            <div>
-              <div className="flex items-center justify-between mb-2.5">
-                <label htmlFor="login-password" className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-white/25">
-                  <Lock className="w-3 h-3" />
+            <div className="space-y-2">
+              <div className="flex justify-between items-center px-1">
+                <label className="text-xs font-medium tracking-wider uppercase text-[#c7c4d7]/80" htmlFor="password">
                   Password
                 </label>
-                <Link
-                  href="#"
-                  className="text-[11px] font-semibold text-indigo-400/60 hover:text-indigo-400 transition-colors duration-200"
-                >
-                  Forgot password?
-                </Link>
+                <a href="#" className="text-[10px] uppercase tracking-widest font-bold text-[#c0c1ff] hover:text-[#ddb7ff] transition-colors">
+                  Forgot?
+                </a>
               </div>
-              <div className="relative group">
-                {/* Focus glow */}
-                <div className={cn(
-                  "absolute -inset-px rounded-xl bg-gradient-to-r from-indigo-500/30 to-purple-500/20 transition-opacity duration-300 pointer-events-none",
-                  focusedField === "password" ? "opacity-100" : "opacity-0"
-                )} />
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#908fa0]">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
+                </span>
                 <input
-                  id="login-password"
+                  id="password"
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setFocusedField("password")}
-                  onBlur={() => setFocusedField(null)}
                   placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="relative w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3.5 pr-12 text-white text-[14px] placeholder:text-white/15 focus:outline-none focus:border-indigo-500/30 transition-all duration-200 font-medium"
+                  className="w-full pl-10 pr-12 py-4 bg-[#0e0e0e] border border-transparent rounded-xl focus:ring-2 focus:ring-[#c0c1ff]/20 focus:bg-[#1c1b1b] transition-all placeholder:text-[#908fa0]/40 text-[#e5e2e1] outline-none text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/50 transition-colors duration-200 z-10"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#908fa0] hover:text-[#e5e2e1] transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <motion.button
               type="submit"
-              disabled={!isValid || isLoading}
-              whileHover={isValid && !isLoading ? { scale: 1.01 } : {}}
-              whileTap={isValid && !isLoading ? { scale: 0.99 } : {}}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className={cn(
-                "w-full py-3.5 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all duration-300 mt-2",
-                isValid && !isLoading
-                  ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
-                  : "bg-white/[0.04] text-white/20 cursor-not-allowed border border-white/[0.04]"
-              )}
+              disabled={loading}
+              whileHover={{ scale: 1.01, boxShadow: "0 0 30px rgba(128,131,255,0.3)" }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full relative flex items-center justify-center gap-2 bg-[#8083ff] text-[#07006c] py-4 rounded-xl font-bold text-lg hover:shadow-[0_0_30px_rgba(128,131,255,0.3)] transition-all duration-300 mt-4 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-              {isLoading ? (
+              {loading ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Signing in...
+                  <svg className="animate-spin h-5 w-5 text-[#07006c]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Authenticating...
                 </>
               ) : (
-                <>
-                  Sign In
-                  <ArrowRight className="w-4 h-4" />
-                </>
+                "Sign In to Velora AI"
               )}
             </motion.button>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-6">
-              <div className="flex-1 h-px bg-white/[0.06]" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/15">or continue with</span>
-              <div className="flex-1 h-px bg-white/[0.06]" />
-            </div>
-
-            {/* Social Buttons */}
-            <div className="flex flex-col gap-3">
-              <motion.button
-                type="button"
-                onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className="flex w-full items-center justify-center gap-2.5 py-3.5 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-200"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
-                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-                </svg>
-                <span className="text-[14px] font-semibold text-white/80">Continue with Google</span>
-              </motion.button>
-            </div>
+            <p className="text-center text-sm text-[#c7c4d7] pt-2">
+              Don&apos;t have an account?{" "}
+              <Link href="/signup" className="text-[#c0c1ff] font-semibold hover:underline decoration-[#c0c1ff]/30 underline-offset-4">
+                Create workspace
+              </Link>
+            </p>
           </form>
 
-          {/* Sign up link */}
-          <p className="text-center mt-8 text-[13px] text-white/25 font-medium">
-            Don&apos;t have an account?{" "}
-            <Link
-              href="/signup"
-              className="text-indigo-400/70 hover:text-indigo-400 font-semibold transition-colors duration-200"
-            >
-              Sign up for free
-            </Link>
-          </p>
-
-          {/* Terms */}
-          <p className="text-center mt-4 text-[10px] text-white/10 font-medium leading-relaxed">
-            By signing in, you agree to our{" "}
-            <Link href="#" className="underline hover:text-white/20 transition-colors">Terms of Service</Link>
-            {" "}and{" "}
-            <Link href="#" className="underline hover:text-white/20 transition-colors">Privacy Policy</Link>.
-          </p>
-        </motion.div>
-      </div>
+          {/* Help */}
+          <div className="mt-20 text-center">
+            <button className="inline-flex items-center gap-2 text-xs font-medium text-[#908fa0] hover:text-[#c0c1ff] transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="12" r="10" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+                <circle cx="12" cy="17" r=".5" fill="currentColor" />
+              </svg>
+              Need technical support?
+            </button>
+          </div>
+        </div>
+      </section>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen w-full bg-[#030303]" />}>
-      <LoginContent />
-    </Suspense>
   );
 }

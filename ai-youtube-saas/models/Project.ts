@@ -24,16 +24,25 @@ export interface IProject extends Document {
       status: string;
     };
     scenes: {
-      text: string;
-      prompt: string;
-      duration: number;
-    }[];
+      status: string;
+      data: {
+        text: string;
+        prompt: string;
+        duration: number;
+      }[];
+    };
+    images: { status: string; data: any };
+    animation: { status: string; data: any };
     voice: {
       type: string;
       audioUrl: string;
       settings: Record<string, any>;
+      status: string;
     };
-    video: {
+    subtitles: { status: string; data: any };
+    composition: { status: string; data: any };
+    editor: { status: string; data: any };
+    render: {
       videoUrl: string;
       status: string;
     };
@@ -68,19 +77,46 @@ const ProjectSchema = new Schema<IProject>(
         versions: { type: [String], default: [] },
         status: { type: String, default: "pending" },
       },
-      scenes: [
-        {
-          text: { type: String, default: "" },
-          prompt: { type: String, default: "" },
-          duration: { type: Number, default: 0 },
+      scenes: {
+        status: { type: String, enum: ["pending", "editing", "completed"], default: "pending" },
+        data: {
+          type: [
+            {
+              text: { type: String, default: "" },
+              prompt: { type: String, default: "" },
+              duration: { type: Number, default: 0 },
+            },
+          ],
+          default: [],
         },
-      ],
+      },
+      images: {
+        status: { type: String, default: "pending" },
+        data: { type: Schema.Types.Mixed, default: {} },
+      },
+      animation: {
+        status: { type: String, default: "pending" },
+        data: { type: Schema.Types.Mixed, default: {} },
+      },
       voice: {
         type: { type: String, default: "" },
         audioUrl: { type: String, default: "" },
         settings: { type: Schema.Types.Mixed, default: {} },
+        status: { type: String, default: "pending" },
       },
-      video: {
+      subtitles: {
+        status: { type: String, default: "pending" },
+        data: { type: Schema.Types.Mixed, default: {} },
+      },
+      composition: {
+        status: { type: String, default: "pending" },
+        data: { type: Schema.Types.Mixed, default: {} },
+      },
+      editor: {
+        status: { type: String, default: "pending" },
+        data: { type: Schema.Types.Mixed, default: {} },
+      },
+      render: {
         videoUrl: { type: String, default: "" },
         status: { type: String, default: "pending" },
       },

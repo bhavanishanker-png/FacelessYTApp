@@ -31,5 +31,5 @@ export default async function ProjectPage({
   // NextJS requires pure serialized JSON when passing objects from Server -> Client components
   const serializedProject = JSON.parse(JSON.stringify(project));
 
-  return <ProjectWorkspace project={serializedProject} />;
+  return <ProjectWorkspace key={serializedProject._id.toString()} project={serializedProject} />;
 }

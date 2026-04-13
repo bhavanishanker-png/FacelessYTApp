@@ -1,68 +1,96 @@
 "use client";
 import React from "react";
-import { Home, FolderHeart, Settings, PlaySquare, Sparkles, LogOut } from "lucide-react";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { Sparkles, LayoutDashboard, Film, Clock, FolderOpen, Share2, HelpCircle, LogOut } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-export const Sidebar = () => {
-  const pathname = usePathname();
+const NAV_ITEMS = [
+  { icon: <LayoutDashboard className="w-4 h-4" />, label: "Dashboard", href: "/dashboard" },
+  { icon: <Film className="w-4 h-4" />, label: "Editor", href: "#" },
+  { icon: <Clock className="w-4 h-4" />, label: "Timeline", href: "#" },
+  { icon: <FolderOpen className="w-4 h-4" />, label: "Media", href: "#" },
+  { icon: <Share2 className="w-4 h-4" />, label: "Export", href: "#" },
+];
 
+export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) => {
   return (
-    <div className="w-72 h-screen border-r border-white/5 bg-[#050505] flex flex-col p-8 flex-shrink-0 z-20">
-      
-      <Link href="/dashboard" className="flex items-center gap-4 mb-14 group">
-        <div className="w-10 h-10 rounded-[12px] bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-[0_0_30px_-5px_rgba(99,102,241,0.5)] group-hover:shadow-[0_0_35px_-5px_rgba(99,102,241,0.8)] transition-all">
-          <PlaySquare className="w-5 h-5 text-white" />
-        </div>
-        <h1 className="text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-white/60 group-hover:to-white transition-all">
-          AI Studio
-        </h1>
-      </Link>
+    <aside className="w-64 shrink-0 flex flex-col h-full border-r border-[#464554]/10 bg-[#1c1b1b]/60 backdrop-blur-xl z-40">
+      {/* Logo */}
+      <div className="px-6 py-5 border-b border-[#464554]/10">
+        <Link href="/" className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+            <Sparkles className="w-3.5 h-3.5 text-white" />
+          </div>
+          <span className="text-base font-black tracking-tighter bg-gradient-to-r from-[#c0c1ff] to-[#ddb7ff] bg-clip-text text-transparent">
+            Velora AI
+          </span>
+        </Link>
+      </div>
 
-      <nav className="flex flex-col gap-3 flex-grow">
-        <NavItem href="/dashboard" icon={<Home />} label="Dashboard" active={pathname === "/dashboard"} />
-        <NavItem href="/dashboard" icon={<FolderHeart />} label="Projects" active={pathname.startsWith("/project")} />
-        <NavItem href="#" icon={<Settings />} label="Settings" />
-        
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm text-red-400/50 hover:bg-red-500/10 hover:text-red-400 hover:translate-x-1 mt-2 text-left"
-        >
-          <LogOut className="w-4 h-4" />
-          Logout
-        </button>
+      {/* Active Project */}
+      <div className="px-4 py-4 border-b border-[#464554]/10">
+        <div className="flex items-center gap-3 p-3 rounded-xl bg-[#201f1f]">
+          <div className="w-9 h-9 bg-[#6f00be] rounded-lg flex items-center justify-center shrink-0">
+            <Sparkles className="w-4 h-4 text-[#ddb7ff]" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c0c1ff] truncate">Project Alpha</p>
+            <p className="text-[10px] text-[#908fa0]">AI Processing...</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Nav */}
+      <nav className="flex-1 py-4 px-3 space-y-0.5">
+        {NAV_ITEMS.map(({ icon, label, href }) => {
+          const isActive = label === activeItem;
+          return (
+            <Link
+              key={label}
+              href={href}
+              className={cn(
+                "flex items-center gap-4 px-4 py-3 rounded-xl relative transition-all duration-200 group",
+                isActive
+                  ? "text-[#c0c1ff] bg-[#c0c1ff]/[0.06]"
+                  : "text-[#e5e2e1]/35 hover:bg-[#c0c1ff]/[0.06] hover:text-[#c0c1ff]"
+              )}
+            >
+              {isActive && (
+                <span className="absolute left-0 w-0.5 h-5 bg-[#c0c1ff] rounded-r-full" />
+              )}
+              {icon}
+              <span className="text-[11px] font-semibold uppercase tracking-widest">{label}</span>
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="mt-auto p-5 rounded-2xl bg-white/[0.02] border border-white/5 relative overflow-hidden group hover:border-indigo-500/30 transition-colors duration-500">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-purple-500 opacity-50" />
-        
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="w-4 h-4 text-indigo-400" />
-          <p className="text-sm font-bold text-white/90 tracking-wide">Pro Plan</p>
+      {/* Bottom */}
+      <div className="px-4 pb-6 space-y-3">
+        <button className="w-full py-2.5 rounded-xl border border-[#c0c1ff]/15 text-[#c0c1ff] text-[11px] font-bold uppercase tracking-widest hover:bg-[#c0c1ff]/10 transition-all">
+          Upgrade Plan
+        </button>
+        <div className="pt-3 border-t border-[#464554]/10 space-y-0.5">
+          {[
+            { icon: <HelpCircle className="w-4 h-4" />, label: "Help" },
+            { icon: <LogOut className="w-4 h-4" />, label: "Logout", danger: true },
+          ].map(({ icon, label, danger }) => (
+            <a
+              key={label}
+              href="#"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest",
+                danger
+                  ? "text-[#e5e2e1]/30 hover:text-[#ffb4ab]"
+                  : "text-[#e5e2e1]/30 hover:text-[#c0c1ff]"
+              )}
+            >
+              {icon}
+              {label}
+            </a>
+          ))}
         </div>
-        <p className="text-xs text-white/40 leading-relaxed font-medium">Unlimited scaling & top-tier GPU priority enabled.</p>
       </div>
-    </div>
+    </aside>
   );
 };
-
-const NavItem = ({ icon, label, active, href = "#" }: { icon: React.ReactNode; label: string; active?: boolean; href?: string }) => {
-  return (
-    <Link href={href}>
-      <div
-        className={cn(
-          "flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all duration-300 font-semibold text-sm",
-          active 
-            ? "bg-white/10 text-white shadow-xl shadow-black/50" 
-            : "text-white/40 hover:bg-white/5 hover:text-white/90 hover:translate-x-1"
-        )}
-      >
-        {React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: "w-4 h-4" })}
-        {label}
-      </div>
-    </Link>
-  );
-};
-

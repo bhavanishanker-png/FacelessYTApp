@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     }
 
     // Update Project Document
-    project.steps.video.videoUrl = videoUrl;
-    project.steps.video.status = "approved";
+    project.steps.render.videoUrl = videoUrl;
+    project.steps.render.status = "approved";
     project.status = "completed";
 
     await project.save();

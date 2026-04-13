@@ -17,80 +17,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─────────────────────── Mock Data ─────────────────────── */
-
-const MOCK_SCRIPT = `Most people think they are working hard...
-
-But in reality, they are just busy.
-
-Every day, you wake up,
-scroll your phone,
-delay your goals...
-
-And slowly,
-you are wasting your life.
-
-If you want to change this,
-you need discipline...
-
-Not motivation.`;
-
-const REWRITTEN_SCRIPT = `Everyone believes they're grinding hard…
-
-But the truth? They're just filling time.
-
-Wake up. Scroll. Procrastinate.
-Repeat.
-
-Day after day,
-your dreams slip further away.
-
-Here's the uncomfortable truth —
-motivation fades.
-
-What you really need…
-is raw, brutal discipline.
-
-That's the only way out.`;
-
-const SHORTENED_SCRIPT = `Most people think they work hard.
-In reality, they're just busy.
-
-You wake up, scroll, delay your goals.
-You're wasting your life.
-
-The fix isn't motivation.
-It's discipline.`;
-
-const EXPANDED_SCRIPT = `Most people think they are working hard...
-
-But in reality, they are just busy.
-Busy doing things that don't matter.
-Busy avoiding the hard work that actually counts.
-
-Every day, you wake up,
-scroll your phone for 30 minutes,
-delay your goals for "tomorrow"...
-
-And slowly,
-without even realizing it,
-you are wasting your life.
-
-The scary part?
-You won't notice until it's too late.
-
-If you want to change this,
-you need discipline...
-You need a system.
-You need to show up even when you don't feel like it.
-
-Not motivation.
-Motivation is temporary.
-Discipline is what builds empires.
-
-Start today. Not tomorrow.
-Today.`;
-
 /* ─────────────────────── Component ─────────────────────── */
 
 export const ScriptStepPanel = ({
@@ -98,11 +24,13 @@ export const ScriptStepPanel = ({
   selectedHook,
   initialScript,
   onApprove,
+  onAutoSave,
 }: {
   selectedIdea: string;
   selectedHook: string;
   initialScript?: string;
   onApprove: (script?: string) => Promise<void>;
+  onAutoSave?: (data: { content: string }) => void;
 }) => {
   const [script, setScript] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -128,6 +56,18 @@ export const ScriptStepPanel = ({
     setLineCount(lines);
   }, [script]);
 
+  /* ── Auto-Save Debouncer ── */
+  useEffect(() => {
+    if (!hasGenerated || !script || !onAutoSave) return;
+    
+    // Proceed to trigger auto-save after 1-second of no typing natively
+    const timer = setTimeout(() => {
+      onAutoSave({ content: script });
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [script, hasGenerated, onAutoSave]);
+
   /* ── Auto-resize textarea ── */
   const autoResize = useCallback(() => {
     const el = textareaRef.current;
@@ -141,49 +81,27 @@ export const ScriptStepPanel = ({
   }, [script, autoResize]);
 
   /* ── Generate script ── */
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      setScript(MOCK_SCRIPT);
-      setHasGenerated(true);
-      setIsGenerating(false);
-      setTimeout(() => textareaRef.current?.focus(), 100);
-    }, 1600);
+    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+    setIsGenerating(false);
+    setHasGenerated(true);
   };
 
   /* ── Tool transforms ── */
-  const handleRewrite = () => {
-    setIsTransforming("rewrite");
-    setTimeout(() => {
-      setScript(REWRITTEN_SCRIPT);
-      setIsTransforming(null);
-    }, 1200);
+  const handleAction = async (actionId: string) => {
+    if (!script.trim() || isTransforming !== null) return;
+    setIsTransforming(actionId);
+    
+    // TODO: Connect LIVE AI modifier endpoint here
+    
+    setIsTransforming(null);
   };
 
-  const handleShorten = () => {
-    setIsTransforming("shorten");
-    setTimeout(() => {
-      setScript(SHORTENED_SCRIPT);
-      setIsTransforming(null);
-    }, 1000);
-  };
-
-  const handleExpand = () => {
-    setIsTransforming("expand");
-    setTimeout(() => {
-      setScript(EXPANDED_SCRIPT);
-      setIsTransforming(null);
-    }, 1400);
-  };
-
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
     setIsGenerating(true);
-    setTimeout(() => {
-      const variants = [MOCK_SCRIPT, REWRITTEN_SCRIPT, EXPANDED_SCRIPT];
-      const random = variants[Math.floor(Math.random() * variants.length)];
-      setScript(random);
-      setIsGenerating(false);
-    }, 1400);
+    // TODO: Connect LIVE AI regeneration endpoint here
+    setIsGenerating(false);
   };
 
   const isToolActive = isTransforming !== null || isGenerating;
@@ -282,71 +200,6 @@ export const ScriptStepPanel = ({
           >
             {/* ── Tool Bar ── */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
-              {/* Rewrite */}
-              <motion.button
-                onClick={handleRewrite}
-                disabled={isToolActive}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg border text-[12px] font-semibold tracking-wide transition-all duration-200",
-                  isTransforming === "rewrite"
-                    ? "bg-violet-500/10 border-violet-500/30 text-violet-400"
-                    : "bg-white/[0.02] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.04] hover:border-white/[0.1]",
-                  isToolActive && isTransforming !== "rewrite" && "opacity-30 cursor-not-allowed"
-                )}
-              >
-                {isTransforming === "rewrite" ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <RotateCcw className="w-3 h-3" />
-                )}
-                Rewrite
-              </motion.button>
-
-              {/* Shorten */}
-              <motion.button
-                onClick={handleShorten}
-                disabled={isToolActive}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg border text-[12px] font-semibold tracking-wide transition-all duration-200",
-                  isTransforming === "shorten"
-                    ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
-                    : "bg-white/[0.02] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.04] hover:border-white/[0.1]",
-                  isToolActive && isTransforming !== "shorten" && "opacity-30 cursor-not-allowed"
-                )}
-              >
-                {isTransforming === "shorten" ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Scissors className="w-3 h-3" />
-                )}
-                Shorten
-              </motion.button>
-
-              {/* Expand */}
-              <motion.button
-                onClick={handleExpand}
-                disabled={isToolActive}
-                whileHover={{ scale: 1.04 }}
-                whileTap={{ scale: 0.96 }}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-lg border text-[12px] font-semibold tracking-wide transition-all duration-200",
-                  isTransforming === "expand"
-                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                    : "bg-white/[0.02] border-white/[0.06] text-white/40 hover:text-white/70 hover:bg-white/[0.04] hover:border-white/[0.1]",
-                  isToolActive && isTransforming !== "expand" && "opacity-30 cursor-not-allowed"
-                )}
-              >
-                {isTransforming === "expand" ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Expand className="w-3 h-3" />
-                )}
-                Expand
-              </motion.button>
 
               {/* Spacer + stats */}
               <div className="flex-1" />
@@ -425,16 +278,8 @@ export const ScriptStepPanel = ({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 30 }}
-              className="pt-5 mt-2 border-t border-white/[0.04] flex justify-between items-center"
+              className="pt-5 mt-2 border-t border-white/[0.04] flex justify-end items-center"
             >
-              <button
-                onClick={handleRegenerate}
-                disabled={isToolActive}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.03] transition-all duration-200 font-semibold text-[13px] disabled:opacity-30"
-              >
-                <RefreshCcw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
-                Regenerate
-              </button>
 
               <motion.button
                 onClick={async () => {

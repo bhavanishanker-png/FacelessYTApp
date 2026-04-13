@@ -6,24 +6,16 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const MOCK_HOOKS = [
-  "99% of people fail because of THIS…",
-  "You are wasting your life without realizing it",
-  "Stop doing this if you want success",
-  "This one habit is destroying your future",
-  "Nobody tells you this about success",
-];
-
 export const HookStepPanel = ({
   selectedIdea,
-  initialHook,
+  stepData,
   onApprove,
 }: {
   selectedIdea: string;
-  initialHook?: string;
+  stepData?: any;
   onApprove: (hook?: string) => Promise<void>;
 }) => {
-  const [hooks, setHooks] = useState<string[]>([]);
+  const [hooks, setHooks] = useState<string[]>(stepData?.aiOutput || []);
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [editedHook, setEditedHook] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -32,12 +24,16 @@ export const HookStepPanel = ({
 
   // Initialize from saved DB state
   useEffect(() => {
-    if (initialHook && hooks.length === 0 && !isGenerating && generationCount === 0) {
-      setHooks([initialHook]);
+    if (stepData?.editedHook && hooks.length === 0) {
+      setHooks([stepData.editedHook]);
       setSelectedIndex(0);
-      setEditedHook(initialHook);
+      setEditedHook(stepData.editedHook);
+    } else if (stepData?.selectedHook && hooks.length === 0) {
+      setHooks([stepData.selectedHook]);
+      setSelectedIndex(0);
+      setEditedHook(stepData.selectedHook);
     }
-  }, [initialHook, hooks.length, isGenerating, generationCount]);
+  }, [stepData, hooks.length]);
 
   // Sync textarea whenever user selects a different hook card
   useEffect(() => {
@@ -46,17 +42,14 @@ export const HookStepPanel = ({
     }
   }, [selectedIndex, hooks]);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
     setSelectedIndex(null);
     setEditedHook("");
 
-    setTimeout(() => {
-      const shuffled = [...MOCK_HOOKS].sort(() => Math.random() - 0.5);
-      setHooks(shuffled);
-      setGenerationCount((c) => c + 1);
-      setIsGenerating(false);
-    }, 1200);
+    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+
+    setIsGenerating(false);
   };
 
   const hasApproval = editedHook.trim().length > 0;
@@ -224,17 +217,8 @@ export const HookStepPanel = ({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 30 }}
-            className="pt-6 mt-4 border-t border-white/[0.04] flex justify-between items-center"
+            className="pt-6 mt-4 border-t border-white/[0.04] flex justify-end items-center"
           >
-            <button
-              onClick={handleGenerate}
-              disabled={isGenerating}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.03] transition-all duration-200 font-semibold text-[13px] disabled:opacity-30"
-            >
-              <RefreshCcw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
-              Regenerate
-            </button>
-
             <motion.button
               onClick={async () => {
                 if (hasApproval && !isApproving) {

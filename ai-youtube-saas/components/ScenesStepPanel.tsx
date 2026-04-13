@@ -24,61 +24,7 @@ interface Scene {
   duration: number;
 }
 
-/* ─────────────────────── Mock Data ─────────────────────── */
-
-const MOCK_SCENES: Scene[] = [
-  {
-    id: 1,
-    text: "Most people think they are working hard...",
-    prompt: "Person working late night, dim lighting",
-    duration: 4,
-  },
-  {
-    id: 2,
-    text: "But in reality, they are just busy.",
-    prompt: "Confused person surrounded by tasks",
-    duration: 4,
-  },
-  {
-    id: 3,
-    text: "Every day, you wake up and scroll your phone...",
-    prompt: "Person lying in bed scrolling phone",
-    duration: 5,
-  },
-  {
-    id: 4,
-    text: "You are wasting your life slowly.",
-    prompt: "Dark emotional scene, lonely person",
-    duration: 5,
-  },
-];
-
-const ALT_SCENES: Scene[] = [
-  {
-    id: 1,
-    text: "You think you're grinding every day...",
-    prompt: "Timelapse of a person at desk, clock spinning fast",
-    duration: 4,
-  },
-  {
-    id: 2,
-    text: "But you're running in circles.",
-    prompt: "Person on a treadmill going nowhere, muted colors",
-    duration: 3,
-  },
-  {
-    id: 3,
-    text: "Scrolling. Swiping. Wasting hours.",
-    prompt: "Close-up of phone screen reflecting on face in dark room",
-    duration: 5,
-  },
-  {
-    id: 4,
-    text: "Time doesn't wait. Neither should you.",
-    prompt: "Hourglass shattering in slow motion, cinematic lighting",
-    duration: 5,
-  },
-];
+/* ─────────────────────── Component ─────────────────────── */
 
 const SCENE_COLORS = [
   { bg: "bg-violet-500/8", border: "border-violet-500/20", text: "text-violet-400", dot: "bg-violet-500" },
@@ -87,32 +33,40 @@ const SCENE_COLORS = [
   { bg: "bg-rose-500/8", border: "border-rose-500/20", text: "text-rose-400", dot: "bg-rose-500" },
 ];
 
-/* ─────────────────────── Component ─────────────────────── */
-
 export const ScenesStepPanel = ({
   scriptPreview,
   initialScenes,
   onApprove,
+  onAutoSave,
 }: {
   scriptPreview: string;
   initialScenes?: Scene[];
   onApprove: (scenes?: Scene[]) => Promise<void>;
+  onAutoSave?: (scenes: Scene[]) => void;
 }) => {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
-  const [generationCount, setGenerationCount] = useState(0);
 
   useEffect(() => {
-    if (initialScenes && initialScenes.length > 0 && !hasGenerated && generationCount === 0) {
+    if (initialScenes && initialScenes.length > 0 && !hasGenerated) {
       setScenes(initialScenes);
       setHasGenerated(true);
     }
-  }, [initialScenes, hasGenerated, generationCount]);
+  }, [initialScenes, hasGenerated]);
 
   const selectedScene = scenes[selectedIndex] ?? null;
+
+  /* ── Auto-Save Debouncer ── */
+  useEffect(() => {
+    if (!hasGenerated || scenes.length === 0 || !onAutoSave) return;
+    const timer = setTimeout(() => {
+      onAutoSave(scenes);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [scenes, hasGenerated, onAutoSave]);
 
   /* ── Update a scene field ── */
   const updateScene = (index: number, field: keyof Scene, value: string | number) => {
@@ -122,17 +76,11 @@ export const ScenesStepPanel = ({
   };
 
   /* ── Generate scenes ── */
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     setIsGenerating(true);
     setSelectedIndex(0);
-    setTimeout(() => {
-      const variants = [MOCK_SCENES, ALT_SCENES];
-      const chosen = variants[generationCount % 2].map((s) => ({ ...s }));
-      setScenes(chosen);
-      setHasGenerated(true);
-      setGenerationCount((c) => c + 1);
-      setIsGenerating(false);
-    }, 1500);
+    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+    setIsGenerating(false);
   };
 
   /* ── Total duration ── */
@@ -254,7 +202,7 @@ export const ScenesStepPanel = ({
               <div className="w-[280px] shrink-0 flex flex-col gap-2.5 overflow-y-auto hide-scrollbar pr-1">
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={generationCount}
+                    key={scenes.length}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -435,17 +383,8 @@ export const ScenesStepPanel = ({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, type: "spring", stiffness: 300, damping: 30 }}
-              className="pt-5 mt-4 border-t border-white/[0.04] flex justify-between items-center"
+              className="pt-5 mt-4 border-t border-white/[0.04] flex justify-end items-center"
             >
-              <button
-                onClick={handleGenerate}
-                disabled={isGenerating}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.03] transition-all duration-200 font-semibold text-[13px] disabled:opacity-30"
-              >
-                <RefreshCcw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
-                Regenerate
-              </button>
-
               <motion.button
                 onClick={async () => {
                   if (scenes.length > 0 && !isGenerating && !isApproving) {

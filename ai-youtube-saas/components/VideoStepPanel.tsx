@@ -21,26 +21,21 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─────────────────────── Mock Data ─────────────────────── */
+/* ─────────────────────── Scene Colors ─────────────────────── */
 
-const MOCK_VIDEO_URL = "https://www.w3schools.com/html/mov_bbb.mp4";
-
-const MOCK_SCENES = [
-  { id: 1, label: "Scene 1", text: "Working hard illusion", duration: 4, color: "bg-violet-500" },
-  { id: 2, label: "Scene 2", text: "Just being busy", duration: 4, color: "bg-cyan-500" },
-  { id: 3, label: "Scene 3", text: "Scrolling your phone", duration: 5, color: "bg-amber-500" },
-  { id: 4, label: "Scene 4", text: "Wasting your life", duration: 5, color: "bg-rose-500" },
-];
+const SCENE_COLORS = ["bg-violet-500", "bg-cyan-500", "bg-amber-500", "bg-rose-500"];
 
 /* ─────────────────────── Component ─────────────────────── */
 
 export const VideoStepPanel = ({
   projectTitle,
   initialVideoUrl,
+  scenes: scenesFromProps,
   onApprove,
 }: {
   projectTitle: string;
   initialVideoUrl?: string;
+  scenes?: { text: string; duration: number }[];
   onApprove: (videoUrl?: string) => Promise<void>;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -55,7 +50,16 @@ export const VideoStepPanel = ({
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const [videoKey, setVideoKey] = useState(0);
 
-  const currentVideoUrl = initialVideoUrl || MOCK_VIDEO_URL;
+  const currentVideoUrl = initialVideoUrl || "";
+
+  // Build scene timeline from props
+  const timelineScenes = (scenesFromProps || []).map((s, i) => ({
+    id: i + 1,
+    label: `Scene ${i + 1}`,
+    text: s.text || `Scene ${i + 1}`,
+    duration: s.duration || 4,
+    color: SCENE_COLORS[i % SCENE_COLORS.length],
+  }));
 
   /* ── Video controls ── */
   const togglePlay = () => {
@@ -84,14 +88,16 @@ export const VideoStepPanel = ({
     setProgress(video.duration ? (video.currentTime / video.duration) * 100 : 0);
 
     // Determine active scene based on progress
-    const totalSceneDuration = MOCK_SCENES.reduce((s, sc) => s + sc.duration, 0);
-    const elapsed = (video.currentTime / (video.duration || 1)) * totalSceneDuration;
-    let acc = 0;
-    for (let i = 0; i < MOCK_SCENES.length; i++) {
-      acc += MOCK_SCENES[i].duration;
-      if (elapsed <= acc) {
-        setActiveSceneIndex(i);
-        break;
+    if (timelineScenes.length > 0) {
+      const totalSceneDuration = timelineScenes.reduce((s, sc) => s + sc.duration, 0);
+      const elapsed = (video.currentTime / (video.duration || 1)) * totalSceneDuration;
+      let acc = 0;
+      for (let i = 0; i < timelineScenes.length; i++) {
+        acc += timelineScenes[i].duration;
+        if (elapsed <= acc) {
+          setActiveSceneIndex(i);
+          break;
+        }
       }
     }
   };
@@ -124,7 +130,7 @@ export const VideoStepPanel = ({
     setProgress(0);
   };
 
-  const handleRegenerate = () => {
+  const handleRegenerate = async () => {
     setIsRegenerating(true);
     setIsPlaying(false);
     setProgress(0);
@@ -132,10 +138,9 @@ export const VideoStepPanel = ({
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-    setTimeout(() => {
-      setVideoKey((k) => k + 1);
-      setIsRegenerating(false);
-    }, 2000);
+    // TODO: Connect LIVE AI video regeneration API here.
+    setVideoKey((k) => k + 1);
+    setIsRegenerating(false);
   };
 
   const handleDownload = () => {
@@ -397,8 +402,8 @@ export const VideoStepPanel = ({
             Scene Timeline
           </label>
           <div className="flex gap-2">
-            {MOCK_SCENES.map((scene, idx) => {
-              const totalDur = MOCK_SCENES.reduce((s, sc) => s + sc.duration, 0);
+            {timelineScenes.map((scene, idx) => {
+              const totalDur = timelineScenes.reduce((s, sc) => s + sc.duration, 0);
               const widthPct = (scene.duration / totalDur) * 100;
               const isActive = activeSceneIndex === idx;
 

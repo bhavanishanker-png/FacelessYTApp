@@ -1,13 +1,24 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import Project from "@/models/Project";
 
 export async function POST(request: Request) {
   try {
+    // 1. Auth check — userId is required by the schema
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user || !(session.user as any).id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+
     const body = await request.json();
     const { title, type } = body;
 
-    // Validate inputs
+    // 2. Validate inputs
     if (!title || typeof title !== "string") {
       return NextResponse.json(
         { error: "Invalid or missing title" },
@@ -22,17 +33,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Connect to database
+    // 3. Connect and create project with userId
     await connectDB();
 
-    // Create the project using the Mongoose model
-    // The Mongoose schema's default values automatically handle:
-    // - currentStep = "idea"
-    // - status = "in-progress"
-    // - step initialization (idea, hook, script, scenes, voice, video)
     const project = new Project({
       title,
       type,
+      userId,
     });
 
     const savedProject = await project.save();

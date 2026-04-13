@@ -7,56 +7,41 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const MOCK_IDEAS = [
-  { title: "Why you are wasting your life", tag: "viral", icon: Flame },
-  { title: "Top 5 habits of successful people", tag: "trending", icon: TrendingUp },
-  { title: "This mindset will change everything", tag: "viral", icon: Brain },
-  { title: "Stop doing this if you want success", tag: "insight", icon: Target },
-  { title: "How to stay disciplined every day", tag: "evergreen", icon: Zap },
-];
-
-const TAG_STYLES: Record<string, string> = {
-  viral: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-  trending: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  insight: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
-  evergreen: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-};
-
 export const IdeaStepPanel = ({
-  initialIdea,
+  stepData,
   onApprove 
 }: { 
-  initialIdea?: string;
-  onApprove: (idea: string) => Promise<void> 
+  stepData?: any;
+  onApprove: (idea: string, niche: string) => Promise<void> 
 }) => {
-  const [niche, setNiche] = useState("");
-  const [ideas, setIdeas] = useState<typeof MOCK_IDEAS>([]);
+  const [niche, setNiche] = useState(stepData?.niche || "");
+  // Strictly map purely from DB payload string array into our standardized layout dictionary
+  const [ideas, setIdeas] = useState<{title: string, tag: string, icon: any}[]>(
+    stepData?.generatedIdeas?.map((str: string) => ({ title: str, tag: "generated", icon: Brain })) || []
+  );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [generationCount, setGenerationCount] = useState(0);
 
-  // Prefill if initialIdea exists
+  // Hydrate exact selection if it was locked previously
   React.useEffect(() => {
-    if (initialIdea && ideas.length === 0 && !isGenerating && generationCount === 0) {
-      setIdeas([{ title: initialIdea, tag: "saved", icon: Sparkles }]);
+    if (stepData?.niche && !niche) setNiche(stepData.niche);
+    if (stepData?.userSelected && ideas.length === 0) {
+      setIdeas([{ title: stepData.userSelected, tag: "saved", icon: Sparkles }]);
       setSelectedIndex(0);
     }
-  }, [initialIdea, ideas.length, isGenerating, generationCount]);
+  }, [stepData, ideas.length, niche]);
 
-  const handleGenerate = (e?: React.FormEvent) => {
+  const handleGenerate = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!niche.trim() || isGenerating) return;
 
     setIsGenerating(true);
     setSelectedIndex(null);
 
-    setTimeout(() => {
-      const shuffled = [...MOCK_IDEAS].sort(() => Math.random() - 0.5);
-      setIdeas(shuffled);
-      setGenerationCount((c) => c + 1);
-      setIsGenerating(false);
-    }, 1400);
+    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+    setIsGenerating(false);
   };
 
   return (
@@ -113,8 +98,13 @@ export const IdeaStepPanel = ({
 
       {/* ── Ideas Grid ── */}
       <div className="flex-1 overflow-y-auto hide-scrollbar -mx-1 px-1 pb-2">
-        <AnimatePresence mode="wait">
-          {ideas.length > 0 ? (
+        {ideas.length === 0 && !isGenerating ? (
+          <div className="flex flex-col items-center justify-center h-full text-white/30 space-y-4">
+            <Brain className="w-12 h-12 opacity-20" />
+            <p className="text-sm font-medium tracking-wide">Ready for backend AI integration. Type a niche above to run generation tests.</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="wait">
             <motion.div
               key={generationCount}
               initial={{ opacity: 0 }}
@@ -168,7 +158,9 @@ export const IdeaStepPanel = ({
                       </h3>
                       <span className={cn(
                         "inline-flex px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-[0.12em] border",
-                        TAG_STYLES[idea.tag]
+                        idea.tag === "saved" || idea.tag === "generated" 
+                          ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" 
+                          : "bg-white/5 text-white/40 border-white/10"
                       )}>
                         {idea.tag}
                       </span>
@@ -195,17 +187,8 @@ export const IdeaStepPanel = ({
                 );
               })}
             </motion.div>
-          ) : (
-            <div className="h-full min-h-[200px] flex flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/[0.04]">
-              <div className="w-12 h-12 rounded-full bg-white/[0.02] flex items-center justify-center">
-                <Sparkles className="w-5 h-5 text-white/10" />
-              </div>
-              <p className="text-white/15 font-medium text-sm text-center">
-                {isGenerating ? "Generating viral concepts..." : "Enter a niche above to get started"}
-              </p>
-            </div>
-          )}
-        </AnimatePresence>
+          </AnimatePresence>
+        )}
       </div>
 
       {/* ── Action Footer ── */}
@@ -215,22 +198,13 @@ export const IdeaStepPanel = ({
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 30 }}
-            className="pt-6 mt-4 border-t border-white/[0.04] flex justify-between items-center"
+            className="pt-6 mt-4 border-t border-white/[0.04] flex justify-end items-center"
           >
-            <button
-              onClick={() => handleGenerate()}
-              disabled={isGenerating}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-white/30 hover:text-white/70 hover:bg-white/[0.03] transition-all duration-200 font-semibold text-[13px] disabled:opacity-30"
-            >
-              <RefreshCcw className={cn("w-3.5 h-3.5", isGenerating && "animate-spin")} />
-              Regenerate
-            </button>
-
             <motion.button
               onClick={async () => {
                 if (selectedIndex !== null && !isApproving) {
                   setIsApproving(true);
-                  await onApprove(ideas[selectedIndex].title);
+                  await onApprove(ideas[selectedIndex].title, niche);
                   setIsApproving(false);
                 }
               }}
