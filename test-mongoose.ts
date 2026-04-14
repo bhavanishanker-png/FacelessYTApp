@@ -1,9 +1,9 @@
 import mongoose from "mongoose";
 import Project from "./models/Project";
-import dbConnect from "./lib/db";
+import { connectDB } from "./lib/db";
 
 async function run() {
-  await dbConnect();
+  await connectDB();
   
   // get any project
   const project = await Project.findOne();
@@ -22,19 +22,19 @@ async function run() {
   try {
     await project.save();
     console.log("scenes saved successfully. status is:", project.steps.scenes.status);
-  } catch (e) {
+  } catch (e: any) {
     console.log("scenes error:", e.message);
   }
 
   // simulate images update
   console.log("now updating images");
-  const imgData = { status: "completed" };
+  const imgData = { status: "completed", data: [] };
   project.steps.images = imgData;
   
   try {
     await project.save();
     console.log("images saved successfully");
-  } catch(e) {
+  } catch(e: any) {
     console.log("images error:", e.message);
   }
 
