@@ -79,7 +79,45 @@ export const ScenesStepPanel = ({
   const handleGenerate = async () => {
     setIsGenerating(true);
     setSelectedIndex(0);
-    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+
+    // Simulated delay for UX — replace with real AI API call
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const mockScenes: Scene[] = [
+      {
+        id: 1,
+        text: "Hook — Attention-grabbing opening that stops the viewer from scrolling. Bold statement or question that creates immediate curiosity.",
+        prompt: "Dramatic cinematic close-up of a person looking directly at camera with intense lighting, dark moody background, 4K quality",
+        duration: 5,
+      },
+      {
+        id: 2,
+        text: "Introduction — Set the stage and tell the viewer what they'll learn. Build anticipation for the value about to be delivered.",
+        prompt: "Wide shot of a modern minimalist workspace with multiple screens showing data and analytics, soft blue ambient lighting",
+        duration: 8,
+      },
+      {
+        id: 3,
+        text: "The Problem — Describe the common mistake or challenge. Use relatable examples that make the viewer nod along in agreement.",
+        prompt: "Split screen showing frustrated person on one side and a maze/puzzle on the other, warm orange and red tones",
+        duration: 10,
+      },
+      {
+        id: 4,
+        text: "The Solution — Reveal the key insight or strategy. Break it down into simple, actionable steps the viewer can follow.",
+        prompt: "Bright overhead shot of a clear roadmap or blueprint on a clean desk, green and white color scheme suggesting growth",
+        duration: 12,
+      },
+      {
+        id: 5,
+        text: "Call to Action — Wrap up with energy. Ask for engagement, tease the next video, and leave the viewer motivated to take action.",
+        prompt: "Dynamic shot of a subscribe button animation with particle effects, vibrant purple and blue gradient background",
+        duration: 6,
+      },
+    ];
+
+    setScenes(mockScenes);
+    setHasGenerated(true);
     setIsGenerating(false);
   };
 
@@ -215,7 +253,7 @@ export const ScenesStepPanel = ({
 
                       return (
                         <motion.button
-                          key={scene.id}
+                          key={`scene-${scene.id ?? idx}`}
                           initial={{ opacity: 0, x: -16 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{

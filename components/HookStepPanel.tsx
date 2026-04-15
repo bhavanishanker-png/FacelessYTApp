@@ -47,8 +47,18 @@ export const HookStepPanel = ({
     setSelectedIndex(null);
     setEditedHook("");
 
-    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+    // Simulated delay for UX — replace with real AI API call
+    await new Promise((r) => setTimeout(r, 1500));
 
+    const mockHooks = [
+      `Stop scrolling. This is the ${selectedIdea.split(" ").slice(0, 3).join(" ")} video you've been waiting for.`,
+      `What if I told you everything you know about ${selectedIdea.split(" ").slice(-3).join(" ")} is wrong?`,
+      `In the next 60 seconds, I'm going to show you something that will completely change how you think.`,
+      `97% of people get this wrong. Are you one of them? Let me explain...`,
+    ];
+
+    setHooks(mockHooks);
+    setGenerationCount((c) => c + 1);
     setIsGenerating(false);
   };
 

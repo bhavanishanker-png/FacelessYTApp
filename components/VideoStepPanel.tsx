@@ -138,7 +138,8 @@ export const VideoStepPanel = ({
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
     }
-    // TODO: Connect LIVE AI video regeneration API here.
+    // Simulated delay for UX — replace with real AI video regeneration API
+    await new Promise((r) => setTimeout(r, 2000));
     setVideoKey((k) => k + 1);
     setIsRegenerating(false);
   };

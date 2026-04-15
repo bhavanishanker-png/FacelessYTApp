@@ -40,7 +40,20 @@ export const IdeaStepPanel = ({
     setIsGenerating(true);
     setSelectedIndex(null);
 
-    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+    // Simulated delay for UX — replace with real AI API call
+    await new Promise((r) => setTimeout(r, 1500));
+
+    // Mock ideas based on the niche input
+    const nicheTitle = niche.trim().charAt(0).toUpperCase() + niche.trim().slice(1);
+    const mockIdeas = [
+      { title: `Why Most People Fail at ${nicheTitle} (And How to Fix It)`, tag: "trending", icon: TrendingUp },
+      { title: `${nicheTitle} Secrets the Top 1% Don't Want You to Know`, tag: "viral", icon: Flame },
+      { title: `I Tried ${nicheTitle} for 30 Days — Here's What Happened`, tag: "challenge", icon: Zap },
+      { title: `The Ultimate Beginner's Guide to ${nicheTitle} in 2025`, tag: "evergreen", icon: Target },
+    ];
+
+    setIdeas(mockIdeas);
+    setGenerationCount((c) => c + 1);
     setIsGenerating(false);
   };
 

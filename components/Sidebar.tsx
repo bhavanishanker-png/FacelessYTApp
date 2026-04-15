@@ -1,15 +1,16 @@
 "use client";
 import React from "react";
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { Sparkles, LayoutDashboard, Film, Clock, FolderOpen, Share2, HelpCircle, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard className="w-4 h-4" />, label: "Dashboard", href: "/dashboard" },
-  { icon: <Film className="w-4 h-4" />, label: "Editor", href: "#" },
-  { icon: <Clock className="w-4 h-4" />, label: "Timeline", href: "#" },
-  { icon: <FolderOpen className="w-4 h-4" />, label: "Media", href: "#" },
-  { icon: <Share2 className="w-4 h-4" />, label: "Export", href: "#" },
+  { icon: <Film className="w-4 h-4" />, label: "Editor", href: "/dashboard" },
+  { icon: <Clock className="w-4 h-4" />, label: "Timeline", href: "/dashboard" },
+  { icon: <FolderOpen className="w-4 h-4" />, label: "Media", href: "/dashboard" },
+  { icon: <Share2 className="w-4 h-4" />, label: "Export", href: "/dashboard" },
 ];
 
 export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) => {
@@ -72,14 +73,14 @@ export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) =
         </button>
         <div className="pt-3 border-t border-[#464554]/10 space-y-0.5">
           {[
-            { icon: <HelpCircle className="w-4 h-4" />, label: "Help" },
-            { icon: <LogOut className="w-4 h-4" />, label: "Logout", danger: true },
-          ].map(({ icon, label, danger }) => (
-            <a
+            { icon: <HelpCircle className="w-4 h-4" />, label: "Help", onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
+            { icon: <LogOut className="w-4 h-4" />, label: "Logout", danger: true, onClick: () => signOut({ callbackUrl: "/login" }) },
+          ].map(({ icon, label, danger, onClick }) => (
+            <button
               key={label}
-              href="#"
+              onClick={onClick}
               className={cn(
-                "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest",
+                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest",
                 danger
                   ? "text-[#e5e2e1]/30 hover:text-[#ffb4ab]"
                   : "text-[#e5e2e1]/30 hover:text-[#c0c1ff]"
@@ -87,7 +88,7 @@ export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) =
             >
               {icon}
               {label}
-            </a>
+            </button>
           ))}
         </div>
       </div>

@@ -83,7 +83,35 @@ export const ScriptStepPanel = ({
   /* ── Generate script ── */
   const handleGenerate = async () => {
     setIsGenerating(true);
-    // TODO: Connect LIVE AI API endpoint here when backend is wired.
+
+    // Simulated delay for UX — replace with real AI API call
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const mockScript = `[HOOK]
+${selectedHook || "Stop scrolling — this is the video that changes everything."}
+
+[INTRO]
+Today we're diving deep into something that most people completely overlook. By the end of this video, you'll have a completely new perspective on ${selectedIdea || "this topic"}.
+
+[SECTION 1 — THE PROBLEM]
+Here's the thing that nobody talks about. Most people approach this the wrong way. They think it's about working harder, but it's actually about working smarter. Let me show you exactly what I mean.
+
+The data shows that 90% of people who try this fail within the first month. But it's not because they're not talented enough — it's because they're missing one crucial piece of the puzzle.
+
+[SECTION 2 — THE SOLUTION]
+Now here's where it gets interesting. The top performers in this space all share one common trait. They focus on systems, not goals. Let me break this down for you step by step.
+
+First, you need to understand the fundamentals. Second, you need to build a daily practice. Third — and this is the part most people skip — you need to track your progress and iterate.
+
+[SECTION 3 — THE PROOF]
+I've personally tested this approach for the last 6 months, and the results speak for themselves. My output increased by 300%, and the quality actually improved at the same time.
+
+[CALL TO ACTION]
+If you found this valuable, smash that subscribe button and hit the bell icon. Drop a comment below telling me your biggest takeaway. I read every single one.
+
+See you in the next video.`;
+
+    setScript(mockScript);
     setIsGenerating(false);
     setHasGenerated(true);
   };
@@ -93,14 +121,47 @@ export const ScriptStepPanel = ({
     if (!script.trim() || isTransforming !== null) return;
     setIsTransforming(actionId);
     
-    // TODO: Connect LIVE AI modifier endpoint here
+    // Simulated delay — replace with real AI modifier endpoint
+    await new Promise((r) => setTimeout(r, 1500));
+    
+    if (actionId === "shorten") {
+      // Simulate shortening by cutting content
+      const lines = script.split("\n").filter(l => l.trim());
+      setScript(lines.slice(0, Math.ceil(lines.length * 0.6)).join("\n"));
+    } else if (actionId === "expand") {
+      setScript(script + "\n\n[BONUS SECTION]\nBut wait — there's actually one more thing I want to share with you. This is the advanced strategy that separates the amateurs from the professionals. Pay close attention to this part.\n\nThe key insight is that consistency beats intensity every single time. Show up every day, even when you don't feel like it, and the compound effect will blow your mind.");
+    } else if (actionId === "rewrite") {
+      setScript(script.replace(/\[([^\]]+)\]/g, (_, section) => `[${section} — REVISED]`));
+    }
     
     setIsTransforming(null);
   };
 
   const handleRegenerate = async () => {
     setIsGenerating(true);
-    // TODO: Connect LIVE AI regeneration endpoint here
+    // Simulated delay — replace with real AI regeneration endpoint
+    await new Promise((r) => setTimeout(r, 1800));
+    
+    setScript(`[HOOK]
+${selectedHook || "You won't believe what I'm about to show you."}
+
+[INTRO]
+Let's talk about ${selectedIdea || "something important"}. This is version 2 of the script, and I think you'll find it even more compelling.
+
+[MAIN CONTENT]
+The truth is, success in any field comes down to three simple principles. Let me walk you through each one with real examples you can apply today.
+
+Principle one: Start before you're ready. The biggest mistake is waiting for the perfect moment. Spoiler — it never comes. The best time to start was yesterday. The second best time is right now.
+
+Principle two: Embrace the boring work. Everyone wants the highlight reel, but nobody wants to talk about the countless hours of practice that make those moments possible.
+
+Principle three: Learn from failure, not just success. Every setback is a data point. Every mistake is a lesson. The only true failure is giving up entirely.
+
+[OUTRO]
+Remember — the gap between where you are and where you want to be is bridged by taking action. Don't just watch this video and move on. Pick ONE thing and implement it today.
+
+Like, subscribe, and I'll see you in the next one.`);
+    
     setIsGenerating(false);
   };
 

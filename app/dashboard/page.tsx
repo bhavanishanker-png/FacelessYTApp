@@ -13,10 +13,10 @@ import { CreateProjectModal } from "@/components/CreateProjectModal";
 
 const NAV_ITEMS = [
   { icon: <LayoutDashboard className="w-4 h-4" />, label: "Dashboard", href: "/dashboard", active: true },
-  { icon: <Film className="w-4 h-4" />, label: "Editor", href: "#", active: false },
-  { icon: <Clock className="w-4 h-4" />, label: "Timeline", href: "#", active: false },
-  { icon: <FolderOpen className="w-4 h-4" />, label: "Media", href: "#", active: false },
-  { icon: <Share2 className="w-4 h-4" />, label: "Export", href: "#", active: false },
+  { icon: <Film className="w-4 h-4" />, label: "Editor", href: "/dashboard", active: false },
+  { icon: <Clock className="w-4 h-4" />, label: "Timeline", href: "/dashboard", active: false },
+  { icon: <FolderOpen className="w-4 h-4" />, label: "Media", href: "/dashboard", active: false },
+  { icon: <Share2 className="w-4 h-4" />, label: "Export", href: "/dashboard", active: false },
 ];
 
 export default function DashboardPage() {
@@ -101,9 +101,9 @@ export default function DashboardPage() {
           </Link>
           <div className="hidden md:flex items-center gap-6">
             {["Projects", "Assets", "Templates"].map((item, i) => (
-              <a
+              <Link
                 key={item}
-                href="#"
+                href="/dashboard"
                 className={`font-bold tracking-tight text-sm transition-all duration-300 ${
                   i === 0
                     ? "text-[#c0c1ff] border-b-2 border-[#c0c1ff] pb-0.5"
@@ -111,7 +111,7 @@ export default function DashboardPage() {
                 }`}
               >
                 {item}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -194,13 +194,13 @@ export default function DashboardPage() {
             Upgrade Plan
           </button>
           <div className="pt-3 border-t border-[#464554]/10 space-y-0.5">
-            <a
-              href="#"
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="flex items-center gap-4 px-2 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest text-[#e5e2e1]/35 hover:text-[#c0c1ff]"
             >
               <HelpCircle className="w-4 h-4" />
               Help
-            </a>
+            </button>
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
               className="w-full flex items-center gap-4 px-2 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest text-[#e5e2e1]/35 hover:text-[#ffb4ab]"
@@ -283,7 +283,7 @@ export default function DashboardPage() {
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-black tracking-tight">Recent Creations</h2>
               <button
-                onClick={() => {}}
+                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
                 className="text-[#c0c1ff] text-xs font-bold uppercase tracking-widest hover:underline flex items-center gap-1 transition-all"
               >
                 View All Projects <ChevronRight className="w-3.5 h-3.5" />

@@ -2,6 +2,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { useSession } from "next-auth/react";
 import {
   Sparkles, Brain, Waves, Video, Captions, Share2,
   ArrowRight, ChevronDown, Play
@@ -15,6 +16,8 @@ const fadeUp = (delay = 0) => ({
 
 export default function LandingPage() {
   const [email, setEmail] = useState("");
+  const { data: session } = useSession();
+  const ctaHref = session ? "/dashboard" : "/signup";
 
   return (
     <div className="min-h-screen bg-[#141313] text-[#e5e2e1] font-sans overflow-x-hidden selection:bg-[#c0c1ff]/25">
@@ -37,21 +40,25 @@ export default function LandingPage() {
 
           {/* Nav Links */}
           <nav className="hidden md:flex items-center gap-8">
-            {["Studio", "Library", "AI Assets", "Analytics"].map((item, i) => (
+            {[
+              { label: "Studio", href: "#features" },
+              { label: "Pricing", href: "#cta" },
+              { label: "About", href: "#cta" },
+            ].map((item, i) => (
               <a
-                key={item}
-                href="#"
+                key={item.label}
+                href={item.href}
                 className={`text-sm font-semibold tracking-wide uppercase transition-all duration-300 ${
                   i === 0 ? "text-[#c0c1ff]" : "text-[#e5e2e1]/50 hover:text-[#c0c1ff]"
                 }`}
               >
-                {item}
+                {item.label}
               </a>
             ))}
           </nav>
 
           {/* CTA */}
-          <Link href="/signup">
+          <Link href={ctaHref}>
             <motion.button
               whileHover={{ scale: 1.04 }}
               whileTap={{ scale: 0.96 }}
@@ -111,7 +118,7 @@ export default function LandingPage() {
 
             {/* CTAs */}
             <motion.div {...fadeUp(0.45)} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
-              <Link href="/signup">
+              <Link href={ctaHref}>
                 <motion.button
                   whileHover={{ scale: 1.03, boxShadow: "0 0 40px rgba(192,193,255,0.25)" }}
                   whileTap={{ scale: 0.97 }}
@@ -121,10 +128,10 @@ export default function LandingPage() {
                   <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </motion.button>
               </Link>
-              <button className="flex items-center gap-2 px-10 py-5 rounded-xl font-bold text-lg border border-[#464554]/40 text-[#c7c4d7] hover:bg-[#353434]/30 hover:text-white transition-all">
+              <a href="#features" className="flex items-center gap-2 px-10 py-5 rounded-xl font-bold text-lg border border-[#464554]/40 text-[#c7c4d7] hover:bg-[#353434]/30 hover:text-white transition-all">
                 <Play className="w-5 h-5" />
                 View Showcase
-              </button>
+              </a>
             </motion.div>
           </div>
 
@@ -135,7 +142,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── FEATURES / BENTO GRID ── */}
-        <section className="py-32 px-8 max-w-7xl mx-auto mesh-gradient">
+        <section id="features" className="py-32 px-8 max-w-7xl mx-auto mesh-gradient scroll-mt-24">
           <div className="mb-20">
             <p className="text-sm font-bold text-[#c0c1ff] tracking-[0.3em] uppercase mb-4">Core Engine</p>
             <h2 className="text-4xl md:text-5xl font-black tracking-tighter">The Obsidian Edit Suite.</h2>
@@ -199,7 +206,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── FINAL CTA ── */}
-        <section className="py-32 flex flex-col items-center justify-center">
+        <section id="cta" className="py-32 flex flex-col items-center justify-center scroll-mt-24">
           <div className="max-w-4xl px-8 w-full">
             <div className="rounded-[2.5rem] bg-gradient-to-br from-[#2a2a2a] to-[#141313] p-12 md:p-20 text-center relative overflow-hidden border border-[#464554]/20 shadow-2xl">
               <div className="absolute inset-0 opacity-5 bg-[url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800')] bg-cover" />
@@ -247,8 +254,12 @@ export default function LandingPage() {
             <span className="text-lg font-extrabold tracking-tighter text-gradient-indigo">Velora AI</span>
           </div>
           <div className="flex gap-8 text-[10px] font-medium tracking-widest uppercase text-[#c7c4d7]/30">
-            {["Privacy Policy", "Terms of Service", "Security", "Brand Assets"].map((item) => (
-              <a key={item} href="#" className="hover:text-[#c0c1ff] transition-colors">{item}</a>
+            {[
+              { label: "Privacy Policy", href: "#cta" },
+              { label: "Terms of Service", href: "#cta" },
+              { label: "Security", href: "#features" },
+            ].map((item) => (
+              <a key={item.label} href={item.href} className="hover:text-[#c0c1ff] transition-colors">{item.label}</a>
             ))}
           </div>
           <div className="text-[10px] text-[#c7c4d7]/20 tracking-widest">

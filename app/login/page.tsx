@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from "react";
-import { signIn } from "next-auth/react";
+import React, { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -13,6 +13,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div className="min-h-screen bg-[#141313] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-[#6366f1] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,9 +176,13 @@ export default function LoginPage() {
                 <label className="text-xs font-medium tracking-wider uppercase text-[#c7c4d7]/80" htmlFor="password">
                   Password
                 </label>
-                <a href="#" className="text-[10px] uppercase tracking-widest font-bold text-[#c0c1ff] hover:text-[#ddb7ff] transition-colors">
+                <button
+                  type="button"
+                  onClick={() => alert("Password reset is coming soon! Please contact support for now.")}
+                  className="text-[10px] uppercase tracking-widest font-bold text-[#c0c1ff] hover:text-[#ddb7ff] transition-colors"
+                >
                   Forgot?
-                </a>
+                </button>
               </div>
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#908fa0]">

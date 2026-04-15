@@ -224,7 +224,10 @@ export const VoiceStepPanel = ({
     if (!selectedVoiceId) return;
     setIsGenerating(true);
     stopPlayback();
-    // TODO: Connect LIVE AI TTS API endpoint here when backend is wired.
+
+    // Simulated delay for UX — replace with real AI TTS API call
+    await new Promise((r) => setTimeout(r, 2000));
+
     setHasGenerated(true);
     setIsGenerating(false);
     setGenerationCount(c => c + 1);

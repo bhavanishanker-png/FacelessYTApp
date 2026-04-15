@@ -1,6 +1,6 @@
 "use client";
-import React, { useState } from "react";
-import { signIn } from "next-auth/react";
+import React, { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -14,6 +14,23 @@ export default function SignupPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+  const { data: session, status } = useSession();
+
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (status === "authenticated") {
+      router.replace("/dashboard");
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "authenticated") {
+    return (
+      <div className="min-h-screen bg-[#141313] flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-[#6366f1] border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +48,7 @@ export default function SignupPage() {
         body: JSON.stringify({ name, email, password }),
       });
       const data = await res.json();
-      
+
       if (!res.ok) {
         setError(data.message || "Something went wrong.");
         setLoading(false);
@@ -64,11 +81,6 @@ export default function SignupPage() {
       {/* LEFT: Cinematic Image Panel */}
       <section className="hidden lg:flex relative w-1/2 flex-col justify-between p-16 overflow-hidden bg-[#0e0e0e]">
         <div className="absolute inset-0 z-0">
-          <img
-            src="https://images.unsplash.com/photo-1636036688687-04c1a7b03e3e?w=1200&q=80"
-            alt="Creative Studio"
-            className="w-full h-full object-cover opacity-40 grayscale-[0.3]"
-          />
           <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1]/12 via-transparent to-[#a855f7]/10" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#141313] via-transparent to-transparent opacity-80" />
         </div>
