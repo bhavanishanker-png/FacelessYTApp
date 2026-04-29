@@ -8,12 +8,12 @@ export interface IProject extends Document {
   status: "in-progress" | "completed";
   steps: {
     idea: {
-      aiOutput: string;
+      aiOutput: any;
       userSelected: string;
       status: string;
     };
     hook: {
-      aiOutput: string[];
+      aiOutput: any[];
       selectedHook: string;
       editedHook: string;
       status: string;
@@ -24,6 +24,7 @@ export interface IProject extends Document {
       status: string;
     };
     scenes: {
+      aiOutput: any[];
       status: string;
       data: {
         text: string;
@@ -31,15 +32,37 @@ export interface IProject extends Document {
         duration: number;
       }[];
     };
-    images: { status: string; data: any };
+    images: {
+      status: string;
+      style: string;
+      data: {
+        sceneId: string;
+        imageUrl: string;
+        prompt: string;
+        status: string;
+        error?: string;
+      }[];
+    };
     animation: { status: string; data: any };
     voice: {
       type: string;
+      voiceId: string;
       audioUrl: string;
+      durationSeconds: number;
+      provider: string;
       settings: Record<string, any>;
       status: string;
     };
-    subtitles: { status: string; data: any };
+    subtitles: {
+      status: string;
+      data: {
+        text: string;
+        start: number;
+        end: number;
+        words?: any[];
+      }[];
+      settings?: Record<string, any>;
+    };
     composition: { status: string; data: any };
     editor: { status: string; data: any };
     render: {
@@ -62,22 +85,23 @@ const ProjectSchema = new Schema<IProject>(
     },
     steps: {
       idea: {
-        aiOutput: { type: String, default: "" },
+        aiOutput: { type: Schema.Types.Mixed, default: null }, // Stores raw ViralIdeasOutput
         userSelected: { type: String, default: "" },
         status: { type: String, default: "pending" },
       },
       hook: {
-        aiOutput: { type: [String], default: [] },
+        aiOutput: { type: Schema.Types.Mixed, default: [] }, // Stores ViralHook[]
         selectedHook: { type: String, default: "" },
         editedHook: { type: String, default: "" },
         status: { type: String, default: "pending" },
       },
       script: {
         content: { type: String, default: "" },
-        versions: { type: [String], default: [] },
+        versions: { type: [String], default: [] }, // Preserves script generation history
         status: { type: String, default: "pending" },
       },
       scenes: {
+        aiOutput: { type: Schema.Types.Mixed, default: [] }, // Stores initial AI scenes breakdown
         status: { type: String, enum: ["pending", "editing", "completed"], default: "pending" },
         data: {
           type: [
@@ -92,7 +116,19 @@ const ProjectSchema = new Schema<IProject>(
       },
       images: {
         status: { type: String, default: "pending" },
-        data: { type: Schema.Types.Mixed, default: {} },
+        style: { type: String, default: "" },
+        data: {
+          type: [
+            {
+              sceneId: { type: String, default: "" },
+              imageUrl: { type: String, default: "" },
+              prompt: { type: String, default: "" },
+              status: { type: String, enum: ["success", "failed", "pending"], default: "pending" },
+              error: { type: String, default: "" },
+            },
+          ],
+          default: [],
+        },
       },
       animation: {
         status: { type: String, default: "pending" },
@@ -100,13 +136,27 @@ const ProjectSchema = new Schema<IProject>(
       },
       voice: {
         type: { type: String, default: "" },
+        voiceId: { type: String, default: "" },
         audioUrl: { type: String, default: "" },
+        durationSeconds: { type: Number, default: 0 },
+        provider: { type: String, default: "" },
         settings: { type: Schema.Types.Mixed, default: {} },
         status: { type: String, default: "pending" },
       },
       subtitles: {
         status: { type: String, default: "pending" },
-        data: { type: Schema.Types.Mixed, default: {} },
+        data: {
+          type: [
+            {
+              text: { type: String, default: "" },
+              start: { type: Number, default: 0 },
+              end: { type: Number, default: 0 },
+              words: { type: Schema.Types.Mixed, default: [] },
+            },
+          ],
+          default: [],
+        },
+        settings: { type: Schema.Types.Mixed, default: {} },
       },
       composition: {
         status: { type: String, default: "pending" },

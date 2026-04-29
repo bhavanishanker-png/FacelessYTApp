@@ -150,13 +150,17 @@ const WaveformVisualiser = ({
 /* ─────────────────────── Component ─────────────────────── */
 
 export const VoiceStepPanel = ({
+  projectId,
   scriptPreview,
   initialVoice,
   onApprove,
+  onAutoSave,
 }: {
+  projectId: string;
   scriptPreview: string;
   initialVoice?: any;
   onApprove: (data?: any) => Promise<void>;
+  onAutoSave?: (data: any) => void;
 }) => {
   const [selectedVoiceId, setSelectedVoiceId] = useState<string | null>(null);
   const [speed, setSpeed] = useState(1.0);
@@ -166,82 +170,97 @@ export const VoiceStepPanel = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(0);
   const [generationCount, setGenerationCount] = useState(0);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [duration, setDuration] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Rehydrate from DB
   useEffect(() => {
     if (initialVoice?.type && !selectedVoiceId && !hasGenerated && generationCount === 0) {
-      setSelectedVoiceId(initialVoice.type);
+      setSelectedVoiceId(initialVoice.type || initialVoice.voiceId);
       if (initialVoice.settings?.speed) setSpeed(initialVoice.settings.speed);
-      setHasGenerated(true);
+      if (initialVoice.audioUrl) {
+        setAudioUrl(initialVoice.audioUrl);
+        setDuration(initialVoice.durationSeconds || 0);
+        setHasGenerated(true);
+      }
     }
   }, [initialVoice, selectedVoiceId, hasGenerated, generationCount]);
 
   const selectedVoice = VOICES.find((v) => v.id === selectedVoiceId) ?? null;
 
-  /* ── Mock playback simulation ── */
+  /* ── Audio playback (real HTML5 Audio) ── */
   const startPlayback = () => {
-    if (isPlaying) {
-      stopPlayback();
-      return;
-    }
+    if (isPlaying) { stopPlayback(); return; }
+    if (!audioUrl) return;
+
+    const audio = audioRef.current || new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.src = audioUrl;
+    audio.playbackRate = speed;
+
+    audio.onended = () => { stopPlayback(); setPlaybackProgress(1); };
+    audio.play().catch(() => {});
     setIsPlaying(true);
-    setPlaybackProgress(0);
+
     playIntervalRef.current = setInterval(() => {
-      setPlaybackProgress((prev) => {
-        if (prev >= 1) {
-          stopPlayback();
-          return 0;
-        }
-        return prev + 0.02;
-      });
-    }, 100);
+      if (audio.duration) {
+        setPlaybackProgress(audio.currentTime / audio.duration);
+        setDuration(Math.round(audio.duration));
+      }
+    }, 200);
   };
 
   const stopPlayback = () => {
     setIsPlaying(false);
-    if (playIntervalRef.current) {
-      clearInterval(playIntervalRef.current);
-      playIntervalRef.current = null;
+    if (audioRef.current) { audioRef.current.pause(); }
+    if (playIntervalRef.current) { clearInterval(playIntervalRef.current); playIntervalRef.current = null; }
+  };
+
+  useEffect(() => { stopPlayback(); setPlaybackProgress(0); }, [selectedVoiceId]);
+  useEffect(() => { return () => { stopPlayback(); if (audioRef.current) audioRef.current.pause(); }; }, []);
+
+  /* ── Generate voiceover via API ── */
+  const handleGenerate = async () => {
+    if (!selectedVoiceId || !scriptPreview) return;
+    setIsGenerating(true);
+    setError(null);
+    stopPlayback();
+
+    try {
+      const res = await fetch("/api/ai/voice", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, script: scriptPreview, voice: selectedVoiceId, speed }),
+      });
+      const result = await res.json();
+
+      if (!res.ok || !result.success) {
+        setError(result.error || "Voice generation failed.");
+        setIsGenerating(false);
+        return;
+      }
+
+      setAudioUrl(result.data.audioUrl);
+      setDuration(result.data.durationSeconds);
+      setHasGenerated(true);
+      setGenerationCount((c) => c + 1);
+
+      if (onAutoSave) {
+        onAutoSave({ type: selectedVoiceId, voiceId: selectedVoiceId, audioUrl: result.data.audioUrl, durationSeconds: result.data.durationSeconds, settings: { speed }, status: "editing" });
+      }
+    } catch (err) {
+      setError("Network error — please try again.");
+      console.error("[VoiceStepPanel] Generation failed:", err);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
-  /* ── Stop playback when voice changes ── */
-  useEffect(() => {
-    stopPlayback();
-    setPlaybackProgress(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedVoiceId]);
-
-  /* ── Cleanup on unmount ── */
-  useEffect(() => {
-    return () => {
-      if (playIntervalRef.current) clearInterval(playIntervalRef.current);
-    };
-  }, []);
-
-  /* ── Generate voiceover ── */
-  const handleGenerate = async () => {
-    if (!selectedVoiceId) return;
-    setIsGenerating(true);
-    stopPlayback();
-
-    // Simulated delay for UX — replace with real AI TTS API call
-    await new Promise((r) => setTimeout(r, 2000));
-
-    setHasGenerated(true);
-    setIsGenerating(false);
-    setGenerationCount(c => c + 1);
-  };
-
-  /* ── Regenerate ── */
-  const handleRegenerate = () => {
-    setHasGenerated(false);
-    setIsGenerating(false);
-    stopPlayback();
-    setPlaybackProgress(0);
-  };
-
   const formatSpeed = (s: number) => `${s.toFixed(1)}x`;
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 
   return (
     <div className="flex flex-col h-full relative z-10 w-full">
@@ -274,6 +293,21 @@ export const VoiceStepPanel = ({
           </p>
         </div>
       </div>
+
+      {/* ── Error Banner ── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            className="mb-6 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3"
+          >
+            <span className="text-[13px] text-rose-300 font-medium flex-1">{error}</span>
+            <button onClick={() => setError(null)} className="text-rose-400/50 hover:text-rose-400 text-xs font-bold">✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Main content area (scrollable) ── */}
       <div className="flex-1 overflow-y-auto hide-scrollbar -mx-1 px-1 pb-2">
@@ -513,9 +547,9 @@ export const VoiceStepPanel = ({
                     </div>
                     <div className="flex justify-between mt-2">
                       <span className="text-[10px] font-mono text-white/20">
-                        {Math.floor(playbackProgress * 18)}:{String(Math.floor((playbackProgress * 18 * 60) % 60)).padStart(2, "0")}
+                        {formatTime(Math.floor(playbackProgress * duration))}
                       </span>
-                      <span className="text-[10px] font-mono text-white/20">0:18</span>
+                      <span className="text-[10px] font-mono text-white/20">{formatTime(duration)}</span>
                     </div>
                   </div>
 
@@ -551,7 +585,7 @@ export const VoiceStepPanel = ({
           onClick={async () => {
             if (hasGenerated && !isGenerating && !isApproving) {
               setIsApproving(true);
-              await onApprove({ voiceType: selectedVoiceId, settings: { speed } });
+              await onApprove({ voiceType: selectedVoiceId, voiceId: selectedVoiceId, audioUrl, durationSeconds: duration, settings: { speed } });
               setIsApproving(false);
             }
           }}

@@ -1,10 +1,9 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Clapperboard,
   FileText,
-  RefreshCcw,
   ChevronRight,
   Loader2,
   Sparkles,
@@ -12,13 +11,15 @@ import {
   ImageIcon,
   Type,
   Play,
+  AlertTriangle,
+  RefreshCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /* ─────────────────────── Types ─────────────────────── */
 
-interface Scene {
-  id: number;
+export interface Scene {
+  sceneNumber: number;
   text: string;
   prompt: string;
   duration: number;
@@ -42,13 +43,14 @@ export const ScenesStepPanel = ({
   scriptPreview: string;
   initialScenes?: Scene[];
   onApprove: (scenes?: Scene[]) => Promise<void>;
-  onAutoSave?: (scenes: Scene[]) => void;
+  onAutoSave?: (data: { aiOutput?: any; data: Scene[] }) => void;
 }) => {
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialScenes && initialScenes.length > 0 && !hasGenerated) {
@@ -63,7 +65,7 @@ export const ScenesStepPanel = ({
   useEffect(() => {
     if (!hasGenerated || scenes.length === 0 || !onAutoSave) return;
     const timer = setTimeout(() => {
-      onAutoSave(scenes);
+      onAutoSave({ data: scenes });
     }, 1000);
     return () => clearTimeout(timer);
   }, [scenes, hasGenerated, onAutoSave]);
@@ -76,50 +78,54 @@ export const ScenesStepPanel = ({
   };
 
   /* ── Generate scenes ── */
-  const handleGenerate = async () => {
+  const handleGenerate = useCallback(async () => {
+    if (isGenerating || !scriptPreview) return;
+
     setIsGenerating(true);
     setSelectedIndex(0);
+    setError(null);
 
-    // Simulated delay for UX — replace with real AI API call
-    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const res = await fetch("/api/ai/scenes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ script: scriptPreview }),
+      });
 
-    const mockScenes: Scene[] = [
-      {
-        id: 1,
-        text: "Hook — Attention-grabbing opening that stops the viewer from scrolling. Bold statement or question that creates immediate curiosity.",
-        prompt: "Dramatic cinematic close-up of a person looking directly at camera with intense lighting, dark moody background, 4K quality",
-        duration: 5,
-      },
-      {
-        id: 2,
-        text: "Introduction — Set the stage and tell the viewer what they'll learn. Build anticipation for the value about to be delivered.",
-        prompt: "Wide shot of a modern minimalist workspace with multiple screens showing data and analytics, soft blue ambient lighting",
-        duration: 8,
-      },
-      {
-        id: 3,
-        text: "The Problem — Describe the common mistake or challenge. Use relatable examples that make the viewer nod along in agreement.",
-        prompt: "Split screen showing frustrated person on one side and a maze/puzzle on the other, warm orange and red tones",
-        duration: 10,
-      },
-      {
-        id: 4,
-        text: "The Solution — Reveal the key insight or strategy. Break it down into simple, actionable steps the viewer can follow.",
-        prompt: "Bright overhead shot of a clear roadmap or blueprint on a clean desk, green and white color scheme suggesting growth",
-        duration: 12,
-      },
-      {
-        id: 5,
-        text: "Call to Action — Wrap up with energy. Ask for engagement, tease the next video, and leave the viewer motivated to take action.",
-        prompt: "Dynamic shot of a subscribe button animation with particle effects, vibrant purple and blue gradient background",
-        duration: 6,
-      },
-    ];
+      const result = await res.json();
 
-    setScenes(mockScenes);
-    setHasGenerated(true);
-    setIsGenerating(false);
-  };
+      if (!res.ok || !result.success) {
+        if (res.status === 429) {
+          const waitSec = result.retryAfterMs ? Math.ceil(result.retryAfterMs / 1000) : 60;
+          setError(`Rate limited — please try again in ${waitSec}s`);
+        } else {
+          setError(result.error || "Failed to generate scenes. Please try again.");
+        }
+        setIsGenerating(false);
+        return;
+      }
+
+      // Map AI output to component state schema
+      const mappedScenes: Scene[] = result.data.scenes.map((s: any, idx: number) => ({
+        sceneNumber: s.sceneNumber || idx + 1,
+        text: s.narration || "",
+        prompt: s.imagePrompt || "",
+        duration: s.durationSeconds || 5,
+      }));
+
+      setScenes(mappedScenes);
+      setHasGenerated(true);
+      
+      if (onAutoSave) {
+        onAutoSave({ aiOutput: result.data.scenes, data: mappedScenes });
+      }
+    } catch (err) {
+      setError("Network error — check your connection and try again.");
+      console.error("[ScenesStepPanel] Generation failed:", err);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [isGenerating, scriptPreview]);
 
   /* ── Total duration ── */
   const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0);
@@ -143,6 +149,29 @@ export const ScenesStepPanel = ({
         </p>
       </div>
 
+      {/* ── Error Banner ── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            className="mb-6 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3"
+          >
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-[13px] text-rose-300 font-medium">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-rose-400/50 hover:text-rose-400 transition-colors text-xs font-bold"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ── Script Preview ── */}
       <div className="mb-6 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-start gap-3">
         <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -160,14 +189,14 @@ export const ScenesStepPanel = ({
       {!hasGenerated && (
         <motion.button
           onClick={handleGenerate}
-          disabled={isGenerating}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          disabled={isGenerating || !scriptPreview}
+          whileHover={!isGenerating && scriptPreview ? { scale: 1.02 } : {}}
+          whileTap={!isGenerating && scriptPreview ? { scale: 0.98 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
             "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6",
             "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/15",
-            isGenerating && "opacity-60 cursor-not-allowed saturate-50"
+            (isGenerating || !scriptPreview) && "opacity-60 cursor-not-allowed saturate-50"
           )}
         >
           {isGenerating ? (
@@ -217,7 +246,7 @@ export const ScenesStepPanel = ({
               </div>
               <div className="flex-1" />
               {/* Timeline dots */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap justify-end">
                 {scenes.map((_, i) => (
                   <button
                     key={i}
@@ -253,7 +282,7 @@ export const ScenesStepPanel = ({
 
                       return (
                         <motion.button
-                          key={`scene-${scene.id ?? idx}`}
+                          key={`scene-${idx}`}
                           initial={{ opacity: 0, x: -16 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{
@@ -286,7 +315,7 @@ export const ScenesStepPanel = ({
                                 ? `${color.bg} ${color.border} ${color.text}`
                                 : "bg-white/[0.03] border-white/[0.06] text-white/25"
                             )}>
-                              Scene {idx + 1}
+                              Scene {scene.sceneNumber || idx + 1}
                             </span>
                             <span className={cn(
                               "text-[10px] font-mono transition-colors",
@@ -330,7 +359,7 @@ export const ScenesStepPanel = ({
                               SCENE_COLORS[selectedIndex % SCENE_COLORS.length].dot
                             )} />
                             <span className="text-[12px] font-bold text-white/50 tracking-wide">
-                              Scene {selectedIndex + 1}
+                              Scene {selectedScene.sceneNumber || selectedIndex + 1}
                             </span>
                           </div>
                           <div className="flex items-center gap-2 text-[10px] font-mono text-white/20">
@@ -363,11 +392,11 @@ export const ScenesStepPanel = ({
                               <ImageIcon className="w-3 h-3" />
                               Image Prompt
                             </label>
-                            <input
-                              type="text"
+                            <textarea
                               value={selectedScene.prompt}
                               onChange={(e) => updateScene(selectedIndex, "prompt", e.target.value)}
-                              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-5 py-3.5 text-white/80 text-[14px] placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-500/25 transition-all duration-200 font-medium"
+                              rows={2}
+                              className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-5 py-3.5 text-white/80 text-[14px] placeholder:text-white/10 focus:outline-none focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-500/25 transition-all duration-200 font-medium resize-none"
                               placeholder="Describe the visual for this scene..."
                             />
                             {/* Prompt preview card */}
@@ -377,7 +406,7 @@ export const ScenesStepPanel = ({
                               </div>
                               <div>
                                 <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/15 mb-1">Visual Preview</p>
-                                <p className="text-[12px] text-white/30 font-medium leading-relaxed italic">
+                                <p className="text-[12px] text-white/30 font-medium leading-relaxed italic line-clamp-2">
                                   &quot;{selectedScene.prompt}&quot;
                                 </p>
                               </div>
@@ -394,7 +423,7 @@ export const ScenesStepPanel = ({
                               <input
                                 type="range"
                                 min={1}
-                                max={15}
+                                max={30}
                                 value={selectedScene.duration}
                                 onChange={(e) => updateScene(selectedIndex, "duration", parseInt(e.target.value))}
                                 className="flex-1 h-1.5 bg-white/[0.06] rounded-full appearance-none cursor-pointer accent-cyan-500
@@ -403,7 +432,7 @@ export const ScenesStepPanel = ({
                                   [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(6,182,212,0.4)] [&::-webkit-slider-thumb]:cursor-pointer
                                   [&::-webkit-slider-thumb]:transition-shadow [&::-webkit-slider-thumb]:hover:shadow-[0_0_16px_rgba(6,182,212,0.6)]"
                               />
-                              <div className="w-14 h-10 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center">
+                              <div className="w-14 h-10 rounded-lg bg-white/[0.03] border border-white/[0.06] flex items-center justify-center shrink-0">
                                 <span className="text-[15px] font-bold text-white/70 tabular-nums">{selectedScene.duration}s</span>
                               </div>
                             </div>
@@ -421,8 +450,18 @@ export const ScenesStepPanel = ({
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25, type: "spring", stiffness: 300, damping: 30 }}
-              className="pt-5 mt-4 border-t border-white/[0.04] flex justify-end items-center"
+              className="pt-5 mt-4 border-t border-white/[0.04] flex justify-between items-center"
             >
+              <motion.button
+                onClick={handleGenerate}
+                disabled={isGenerating || isApproving}
+                whileHover={!isGenerating && !isApproving ? { scale: 1.02 } : {}}
+                whileTap={!isGenerating && !isApproving ? { scale: 0.98 } : {}}
+                className="px-4 py-2.5 rounded-lg text-[12px] font-bold tracking-wide flex items-center gap-2 text-white/50 hover:text-white/90 hover:bg-white/[0.03] transition-all"
+              >
+                <RefreshCcw className="w-3.5 h-3.5" />
+                Regenerate All
+              </motion.button>
               <motion.button
                 onClick={async () => {
                   if (scenes.length > 0 && !isGenerating && !isApproving) {

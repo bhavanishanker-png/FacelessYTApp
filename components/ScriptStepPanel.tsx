@@ -5,15 +5,12 @@ import {
   FileText,
   Lightbulb,
   Pencil,
-  RefreshCcw,
   ChevronRight,
   Loader2,
-  Scissors,
-  Expand,
-  RotateCcw,
   Sparkles,
   Type,
   AlignLeft,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -22,23 +19,28 @@ import { cn } from "@/lib/utils";
 export const ScriptStepPanel = ({
   selectedIdea,
   selectedHook,
+  format = "shorts",
   initialScript,
+  stepData,
   onApprove,
   onAutoSave,
 }: {
   selectedIdea: string;
   selectedHook: string;
+  format?: "shorts" | "long";
   initialScript?: string;
+  stepData?: any;
   onApprove: (script?: string) => Promise<void>;
-  onAutoSave?: (data: { content: string }) => void;
+  onAutoSave?: (data: { content: string; versions?: string[] }) => void;
 }) => {
   const [script, setScript] = useState("");
+  const [versions, setVersions] = useState<string[]>(stepData?.versions || []);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isTransforming, setIsTransforming] = useState<string | null>(null);
   const [hasGenerated, setHasGenerated] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [wordCount, setWordCount] = useState(0);
   const [lineCount, setLineCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -50,8 +52,8 @@ export const ScriptStepPanel = ({
 
   /* ── Word / line count ── */
   useEffect(() => {
-    const words = script.trim() ? script.trim().split(/\s+/).length : 0;
-    const lines = script ? script.split("\n").length : 0;
+    const words = script.trim() ? script.trim().split(/\\s+/).length : 0;
+    const lines = script ? script.split("\\n").length : 0;
     setWordCount(words);
     setLineCount(lines);
   }, [script]);
@@ -82,90 +84,56 @@ export const ScriptStepPanel = ({
 
   /* ── Generate script ── */
   const handleGenerate = async () => {
+    if (!selectedIdea || !selectedHook) return;
+    
     setIsGenerating(true);
+    setError(null);
 
-    // Simulated delay for UX — replace with real AI API call
-    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      const res = await fetch("/api/ai/script", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          idea: selectedIdea,
+          hook: selectedHook,
+          format: format,
+          duration: format === "shorts" ? "1 minute" : "5 minutes",
+        }),
+      });
 
-    const mockScript = `[HOOK]
-${selectedHook || "Stop scrolling — this is the video that changes everything."}
+      const result = await res.json();
 
-[INTRO]
-Today we're diving deep into something that most people completely overlook. By the end of this video, you'll have a completely new perspective on ${selectedIdea || "this topic"}.
+      if (!res.ok || !result.success) {
+        if (res.status === 429) {
+          const waitSec = result.retryAfterMs ? Math.ceil(result.retryAfterMs / 1000) : 60;
+          setError(`Rate limited — please try again in ${waitSec}s`);
+        } else {
+          setError(result.error || "Failed to generate script.");
+        }
+        setIsGenerating(false);
+        return;
+      }
 
-[SECTION 1 — THE PROBLEM]
-Here's the thing that nobody talks about. Most people approach this the wrong way. They think it's about working harder, but it's actually about working smarter. Let me show you exactly what I mean.
+      // Convert sections array to a flat string for the editor
+      const rawScript = result.data.sections
+        .map((s: any) => `[${s.label.toUpperCase()}]\n${s.content}`)
+        .join("\n\n");
 
-The data shows that 90% of people who try this fail within the first month. But it's not because they're not talented enough — it's because they're missing one crucial piece of the puzzle.
-
-[SECTION 2 — THE SOLUTION]
-Now here's where it gets interesting. The top performers in this space all share one common trait. They focus on systems, not goals. Let me break this down for you step by step.
-
-First, you need to understand the fundamentals. Second, you need to build a daily practice. Third — and this is the part most people skip — you need to track your progress and iterate.
-
-[SECTION 3 — THE PROOF]
-I've personally tested this approach for the last 6 months, and the results speak for themselves. My output increased by 300%, and the quality actually improved at the same time.
-
-[CALL TO ACTION]
-If you found this valuable, smash that subscribe button and hit the bell icon. Drop a comment below telling me your biggest takeaway. I read every single one.
-
-See you in the next video.`;
-
-    setScript(mockScript);
-    setIsGenerating(false);
-    setHasGenerated(true);
-  };
-
-  /* ── Tool transforms ── */
-  const handleAction = async (actionId: string) => {
-    if (!script.trim() || isTransforming !== null) return;
-    setIsTransforming(actionId);
-    
-    // Simulated delay — replace with real AI modifier endpoint
-    await new Promise((r) => setTimeout(r, 1500));
-    
-    if (actionId === "shorten") {
-      // Simulate shortening by cutting content
-      const lines = script.split("\n").filter(l => l.trim());
-      setScript(lines.slice(0, Math.ceil(lines.length * 0.6)).join("\n"));
-    } else if (actionId === "expand") {
-      setScript(script + "\n\n[BONUS SECTION]\nBut wait — there's actually one more thing I want to share with you. This is the advanced strategy that separates the amateurs from the professionals. Pay close attention to this part.\n\nThe key insight is that consistency beats intensity every single time. Show up every day, even when you don't feel like it, and the compound effect will blow your mind.");
-    } else if (actionId === "rewrite") {
-      setScript(script.replace(/\[([^\]]+)\]/g, (_, section) => `[${section} — REVISED]`));
+      setScript(rawScript);
+      setHasGenerated(true);
+      
+      const newVersions = [...versions, rawScript];
+      setVersions(newVersions);
+      if (onAutoSave) {
+        onAutoSave({ content: rawScript, versions: newVersions });
+      }
+    } catch (err) {
+      console.error("[ScriptStepPanel] Generation error:", err);
+      setError("Network error — please try again.");
+    } finally {
+      setIsGenerating(false);
     }
-    
-    setIsTransforming(null);
   };
-
-  const handleRegenerate = async () => {
-    setIsGenerating(true);
-    // Simulated delay — replace with real AI regeneration endpoint
-    await new Promise((r) => setTimeout(r, 1800));
-    
-    setScript(`[HOOK]
-${selectedHook || "You won't believe what I'm about to show you."}
-
-[INTRO]
-Let's talk about ${selectedIdea || "something important"}. This is version 2 of the script, and I think you'll find it even more compelling.
-
-[MAIN CONTENT]
-The truth is, success in any field comes down to three simple principles. Let me walk you through each one with real examples you can apply today.
-
-Principle one: Start before you're ready. The biggest mistake is waiting for the perfect moment. Spoiler — it never comes. The best time to start was yesterday. The second best time is right now.
-
-Principle two: Embrace the boring work. Everyone wants the highlight reel, but nobody wants to talk about the countless hours of practice that make those moments possible.
-
-Principle three: Learn from failure, not just success. Every setback is a data point. Every mistake is a lesson. The only true failure is giving up entirely.
-
-[OUTRO]
-Remember — the gap between where you are and where you want to be is bridged by taking action. Don't just watch this video and move on. Pick ONE thing and implement it today.
-
-Like, subscribe, and I'll see you in the next one.`);
-    
-    setIsGenerating(false);
-  };
-
-  const isToolActive = isTransforming !== null || isGenerating;
 
   return (
     <div className="flex flex-col h-full relative z-10 w-full">
@@ -182,9 +150,32 @@ Like, subscribe, and I'll see you in the next one.`);
           Script Editor
         </h2>
         <p className="text-white/35 text-[15px] font-medium leading-relaxed max-w-lg">
-          Generate and refine your video script. Edit freely, use AI tools, and craft the perfect narrative.
+          Generate and refine your video script. Edit freely and craft the perfect narrative.
         </p>
       </div>
+
+      {/* ── Error Banner ── */}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            className="mb-6 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3"
+          >
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-[13px] text-rose-300 font-medium">{error}</p>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-rose-400/50 hover:text-rose-400 transition-colors text-xs font-bold"
+            >
+              ✕
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Context Cards ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -195,7 +186,7 @@ Like, subscribe, and I'll see you in the next one.`);
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-indigo-400/50 mb-1">Selected Idea</p>
-            <p className="text-white/75 font-semibold text-[14px] leading-snug truncate">{selectedIdea}</p>
+            <p className="text-white/75 font-semibold text-[14px] leading-snug truncate">{selectedIdea || "No idea selected"}</p>
           </div>
         </div>
         {/* Selected Hook */}
@@ -205,7 +196,7 @@ Like, subscribe, and I'll see you in the next one.`);
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-400/50 mb-1">Selected Hook</p>
-            <p className="text-white/75 font-semibold text-[14px] leading-snug truncate">{selectedHook}</p>
+            <p className="text-white/75 font-semibold text-[14px] leading-snug truncate">{selectedHook || "No hook selected"}</p>
           </div>
         </div>
       </div>
@@ -214,14 +205,14 @@ Like, subscribe, and I'll see you in the next one.`);
       {!hasGenerated && (
         <motion.button
           onClick={handleGenerate}
-          disabled={isGenerating}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
+          disabled={isGenerating || !selectedIdea || !selectedHook}
+          whileHover={!isGenerating && selectedIdea && selectedHook ? { scale: 1.02 } : {}}
+          whileTap={!isGenerating && selectedIdea && selectedHook ? { scale: 0.98 } : {}}
           transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
             "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-8",
             "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/15",
-            isGenerating && "opacity-60 cursor-not-allowed saturate-50"
+            (isGenerating || !selectedIdea || !selectedHook) && "opacity-60 cursor-not-allowed saturate-50"
           )}
         >
           {isGenerating ? (
@@ -261,8 +252,6 @@ Like, subscribe, and I'll see you in the next one.`);
           >
             {/* ── Tool Bar ── */}
             <div className="flex items-center gap-2 mb-4 flex-wrap">
-
-              {/* Spacer + stats */}
               <div className="flex-1" />
               <div className="flex items-center gap-4 text-[11px] font-mono text-white/20">
                 <span className="flex items-center gap-1.5">
@@ -294,30 +283,11 @@ Like, subscribe, and I'll see you in the next one.`);
 
                 {/* Textarea */}
                 <div className="relative">
-                  {/* Transform overlay */}
-                  <AnimatePresence>
-                    {isTransforming && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="absolute inset-0 bg-[#080808]/80 backdrop-blur-sm z-10 flex items-center justify-center"
-                      >
-                        <div className="flex items-center gap-3 text-white/50 text-sm font-medium">
-                          <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
-                          {isTransforming === "rewrite" && "Rewriting script..."}
-                          {isTransforming === "shorten" && "Shortening script..."}
-                          {isTransforming === "expand" && "Expanding script..."}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
                   <textarea
                     ref={textareaRef}
                     value={script}
                     onChange={(e) => setScript(e.target.value)}
-                    disabled={isToolActive}
+                    disabled={isGenerating}
                     spellCheck={false}
                     className={cn(
                       "w-full bg-transparent px-6 py-6 text-white/85 text-[15px] leading-[2] font-[420]",
@@ -325,7 +295,7 @@ Like, subscribe, and I'll see you in the next one.`);
                       "hide-scrollbar min-h-[320px]",
                       "transition-opacity duration-200",
                       "selection:bg-violet-500/30",
-                      isToolActive && "opacity-30"
+                      isGenerating && "opacity-30"
                     )}
                     style={{ fontFamily: "'Inter', 'SF Pro Text', system-ui, sans-serif" }}
                     placeholder="Your script will appear here..."
@@ -344,19 +314,19 @@ Like, subscribe, and I'll see you in the next one.`);
 
               <motion.button
                 onClick={async () => {
-                  if (script.trim() && !isToolActive && !isApproving) {
+                  if (script.trim() && !isGenerating && !isApproving) {
                     setIsApproving(true);
                     await onApprove(script);
                     setIsApproving(false);
                   }
                 }}
-                disabled={!script.trim() || isToolActive || isApproving}
-                whileHover={script.trim() && !isToolActive && !isApproving ? { scale: 1.02 } : {}}
-                whileTap={script.trim() && !isToolActive && !isApproving ? { scale: 0.98 } : {}}
+                disabled={!script.trim() || isGenerating || isApproving}
+                whileHover={script.trim() && !isGenerating && !isApproving ? { scale: 1.02 } : {}}
+                whileTap={script.trim() && !isGenerating && !isApproving ? { scale: 0.98 } : {}}
                 transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                   "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
-                  script.trim() && !isToolActive && !isApproving
+                  script.trim() && !isGenerating && !isApproving
                     ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/15 hover:shadow-violet-500/25"
                     : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
                 )}

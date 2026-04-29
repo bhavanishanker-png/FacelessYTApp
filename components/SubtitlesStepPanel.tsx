@@ -19,24 +19,94 @@ const DEMO_SUBTITLES: Subtitle[] = [
 ];
 
 interface Props {
+  projectId: string;
+  audioUrl?: string;
   script: string;
   stepData?: any;
+  initialSubtitles?: any;
   onApprove: (data: any) => void;
+  onAutoSave?: (data: any) => void;
 }
 
 const FONT_SIZES = [16, 20, 24, 32];
 const COLORS = ["#c0c1ff", "#f9fafb", "#f59e0b", "#10b981"];
 const POSITIONS = ["top-left", "top-center", "top-right", "mid-left", "mid-center", "mid-right", "bot-left", "bot-center", "bot-right"];
 
-export const SubtitlesStepPanel = ({ script, stepData, onApprove }: Props) => {
-  const [subtitles, setSubtitles] = useState<Subtitle[]>(DEMO_SUBTITLES);
-  const [activeId, setActiveId] = useState<string>("2");
+export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, initialSubtitles, onApprove, onAutoSave }: Props) => {
+  const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
+  const [activeId, setActiveId] = useState<string>("");
   const [fontSize, setFontSize] = useState(stepData?.fontSize ?? 24);
   const [selectedColor, setSelectedColor] = useState(stepData?.color || COLORS[0]);
   const [selectedPosition, setSelectedPosition] = useState(stepData?.position || "bot-center");
   const [bgEnabled, setBgEnabled] = useState(stepData?.bgEnabled ?? true);
   const [isBold, setIsBold] = useState(stepData?.isBold ?? false);
   const [isItalic, setIsItalic] = useState(stepData?.isItalic ?? false);
+
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (initialSubtitles?.data && initialSubtitles.data.length > 0) {
+      const mapped = initialSubtitles.data.map((s: any, idx: number) => ({
+        id: idx.toString(),
+        text: s.text,
+        start: new Date(s.start * 1000).toISOString().substring(14, 19),
+        end: new Date(s.end * 1000).toISOString().substring(14, 19),
+        rawStart: s.start,
+        rawEnd: s.end,
+      }));
+      setSubtitles(mapped);
+      if (mapped.length > 0) setActiveId(mapped[0].id);
+    }
+  }, [initialSubtitles]);
+
+  const handleGenerate = async () => {
+    if (!projectId || !audioUrl) {
+      setError("Missing audio file for transcription.");
+      return;
+    }
+    
+    setIsGenerating(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/ai/subtitles", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, audioUrl }),
+      });
+      const result = await res.json();
+      
+      if (!res.ok || !result.success) {
+        setError(result.error || "Failed to generate subtitles");
+        setIsGenerating(false);
+        return;
+      }
+      
+      const mapped = result.data.segments.map((s: any, idx: number) => ({
+        id: idx.toString(),
+        text: s.text,
+        start: new Date(s.start * 1000).toISOString().substring(14, 19),
+        end: new Date(s.end * 1000).toISOString().substring(14, 19),
+        rawStart: s.start,
+        rawEnd: s.end,
+      }));
+      
+      setSubtitles(mapped);
+      if (mapped.length > 0) setActiveId(mapped[0].id);
+      
+      if (onAutoSave) {
+        onAutoSave({ 
+          status: "completed", 
+          data: result.data.segments,
+          settings: { fontSize, color: selectedColor, position: selectedPosition, bgEnabled, isBold, isItalic }
+        });
+      }
+    } catch (err) {
+      setError("Network error while generating subtitles.");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const activeSubtitle = subtitles.find((s) => s.id === activeId);
 
@@ -53,10 +123,29 @@ export const SubtitlesStepPanel = ({ script, stepData, onApprove }: Props) => {
           <h2 className="text-2xl font-black tracking-tight text-white">Subtitle Generation</h2>
           <p className="text-sm text-white/40 mt-1">Review, edit, and style your AI-generated subtitles.</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white/60 text-sm font-semibold hover:bg-white/[0.07] transition-all">
-          <Sparkles className="w-3.5 h-3.5 text-indigo-400" /> AI Re-transcribe
+        <button 
+          onClick={handleGenerate}
+          disabled={isGenerating || !audioUrl}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white/60 text-sm font-semibold hover:bg-white/[0.07] transition-all disabled:opacity-50"
+        >
+          {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-indigo-400" />} 
+          {isGenerating ? "Transcribing..." : "AI Re-transcribe"}
         </button>
       </div>
+
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "auto" }}
+            exit={{ opacity: 0, y: -8, height: 0 }}
+            className="px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3"
+          >
+            <span className="text-[13px] text-rose-300 font-medium flex-1">{error}</span>
+            <button onClick={() => setError(null)} className="text-rose-400/50 hover:text-rose-400 text-xs font-bold">✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 min-h-0 overflow-hidden">
         {/* LEFT: Subtitle List */}

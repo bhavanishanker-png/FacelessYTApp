@@ -63,17 +63,17 @@ export async function POST(request: Request) {
       if (step === "scenes" && !Array.isArray(data.data)) {
         return NextResponse.json({ error: "Scenes step data requires a 'data' array property" }, { status: 400 });
       }
-      if (step === "images" && !data.imageUrl && !data.prompt) {
-        return NextResponse.json({ error: "Images step requires 'imageUrl' or 'prompt'" }, { status: 400 });
+      if (step === "images" && !Array.isArray(data.data) && !data.imageUrl && !data.prompt) {
+        return NextResponse.json({ error: "Images step requires 'data' array, 'imageUrl', or 'prompt'" }, { status: 400 });
       }
       if (step === "animation" && !data.preset && data.duration === undefined) {
         return NextResponse.json({ error: "Animation step requires 'preset' or 'duration'" }, { status: 400 });
       }
-      if (step === "voice" && !data.type && !data.voiceType) {
-        return NextResponse.json({ error: "Voice step requires 'type' or 'voiceType'" }, { status: 400 });
+      if (step === "voice" && !data.type && !data.voiceType && !data.voiceId && !data.audioUrl) {
+        return NextResponse.json({ error: "Voice step requires 'type', 'voiceType', 'voiceId', or 'audioUrl'" }, { status: 400 });
       }
-      if (step === "subtitles" && !data.timestamps && !data.text && !data.settings) {
-        return NextResponse.json({ error: "Subtitles step requires 'timestamps', 'text', or 'settings'" }, { status: 400 });
+      if (step === "subtitles" && !data.data && !data.settings) {
+        return NextResponse.json({ error: "Subtitles step requires 'data' or 'settings'" }, { status: 400 });
       }
       if (step === "editor" && !data.editedData) {
         return NextResponse.json({ error: "Editor step requires 'editedData'" }, { status: 400 });

@@ -28,7 +28,7 @@ async function run() {
 
   // simulate images update
   console.log("now updating images");
-  const imgData = { status: "completed", data: [] };
+  const imgData = { status: "completed", style: "cinematic", data: [] as any[] };
   project.steps.images = imgData;
   
   try {
