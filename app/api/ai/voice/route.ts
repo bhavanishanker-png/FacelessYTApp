@@ -155,17 +155,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // 7. Save audio file to /public/audio/{projectId}/
-    const audioDir = path.join(process.cwd(), "public", "audio", projectId);
-    await mkdir(audioDir, { recursive: true });
-
+    // 7. Upload audio file to Cloudinary
+    const { uploadBufferToCloudinary } = await import("@/lib/storage");
     const timestamp = Date.now();
-    const filename = `voiceover_${voice}_${timestamp}.mp3`;
-    const filePath = path.join(audioDir, filename);
-    await writeFile(filePath, audioBuffer);
+    const publicId = `voiceover_${voice}_${timestamp}`;
+    const folderPath = `faceless-yt/projects/${projectId}/audio`;
+    
+    const uploadResult = await uploadBufferToCloudinary(
+      audioBuffer,
+      folderPath,
+      "video", // Cloudinary treats audio as "video" resource type
+      publicId
+    );
 
-    // Public URL path (served by Next.js static files)
-    const audioUrl = `/audio/${projectId}/${filename}`;
+    const audioUrl = uploadResult.url;
 
     // 8. Estimate duration
     const durationSeconds = estimateDuration(cleanedScript, clampedSpeed);

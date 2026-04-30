@@ -269,7 +269,9 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
         return (
           <div className={panelClass}>
             <RenderStepPanel
+              projectId={project._id}
               projectTitle={project.title}
+              initialRenderData={project?.steps?.render}
               onComplete={async (videoUrl) => {
                 await executeUpdate("render", { videoUrl: videoUrl || "", status: "completed" }, "render");
                 project.status = "completed";

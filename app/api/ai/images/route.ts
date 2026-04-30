@@ -52,6 +52,8 @@ function getOpenAI(): OpenAI {
 async function generateSingleImage(
   prompt: string,
   style: ImageStyle,
+  projectId: string,
+  sceneId: string,
   retries = 2
 ): Promise<{ imageUrl: string; error?: string }> {
   const openai = getOpenAI();
@@ -70,7 +72,11 @@ async function generateSingleImage(
 
       const url = response.data?.[0]?.url;
       if (url) {
-        return { imageUrl: url };
+        // Upload to Cloudinary to persist the image
+        const { uploadUrlToCloudinary } = await import("@/lib/storage");
+        const folderPath = `faceless-yt/projects/${projectId}/images`;
+        const result = await uploadUrlToCloudinary(url, folderPath, "image", sceneId);
+        return { imageUrl: result.url };
       }
 
       throw new Error("No image URL in response");
@@ -158,7 +164,7 @@ export async function POST(request: Request) {
         );
       }
 
-      const result = await generateSingleImage(sceneToRegen.prompt, style);
+      const result = await generateSingleImage(sceneToRegen.prompt, style, projectId, sceneId);
 
       // Update only the specific scene in the array
       const updatedImages = existingImages.map((img: any) =>
@@ -219,7 +225,7 @@ export async function POST(request: Request) {
             };
           }
 
-          const result = await generateSingleImage(prompt, style);
+          const result = await generateSingleImage(prompt, style, projectId, id);
 
           return {
             sceneId: id,

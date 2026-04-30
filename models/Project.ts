@@ -68,6 +68,13 @@ export interface IProject extends Document {
     render: {
       videoUrl: string;
       status: string;
+      jobId: string;
+      progress: number;
+      phase: string;
+      quality: string;
+      durationSeconds: number;
+      fileSizeBytes: number;
+      error: string;
     };
   };
 }
@@ -169,6 +176,13 @@ const ProjectSchema = new Schema<IProject>(
       render: {
         videoUrl: { type: String, default: "" },
         status: { type: String, default: "pending" },
+        jobId: { type: String, default: "" },
+        progress: { type: Number, default: 0 },
+        phase: { type: String, default: "" },
+        quality: { type: String, default: "1080p" },
+        durationSeconds: { type: Number, default: 0 },
+        fileSizeBytes: { type: Number, default: 0 },
+        error: { type: String, default: "" },
       },
     },
   },

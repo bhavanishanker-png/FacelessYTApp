@@ -1,14 +1,17 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Loader2, CheckCircle, XCircle, ChevronLeft, Cloud } from "lucide-react";
+import { Download, Loader2, CheckCircle, XCircle, ChevronLeft, Cloud, AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface Props {
+  projectId: string;
   projectTitle: string;
+  initialRenderData?: any;
   onComplete: (videoUrl?: string) => void;
 }
 
-type RenderState = "selecting" | "rendering" | "complete";
+type RenderState = "selecting" | "rendering" | "complete" | "error";
 
 const QUALITY_OPTIONS = [
   { id: "720p", label: "720p", size: "~50MB", icon: "⚡", desc: "Fast export" },
@@ -19,36 +22,93 @@ const QUALITY_OPTIONS = [
   { id: "4k", label: "Cinematic 4K", size: "~1.2 GB", icon: "🎬", desc: "Lossless HDR", pro: true },
 ];
 
-const RENDER_STEPS = [
-  { label: "Metadata & Upscaling", status: "done" },
-  { label: "Color Grading", status: "active" },
-  { label: "Adding Audio", status: "pending" },
-  { label: "Final Encoding", status: "pending" },
-];
-
-export const RenderStepPanel = ({ projectTitle, onComplete }: Props) => {
+export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, onComplete }: Props) => {
   const [renderState, setRenderState] = useState<RenderState>("selecting");
   const [selectedQuality, setSelectedQuality] = useState("1080p");
   const [progress, setProgress] = useState(0);
   const [elapsed, setElapsed] = useState(0);
+  const [phase, setPhase] = useState("Initializing...");
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (initialRenderData?.status === "completed" && initialRenderData?.videoUrl) {
+      setRenderState("complete");
+      setVideoUrl(initialRenderData.videoUrl);
+      if (initialRenderData.quality) setSelectedQuality(initialRenderData.quality);
+    } else if (initialRenderData?.status === "rendering" || initialRenderData?.status === "queued" || initialRenderData?.status === "encoding") {
+      setRenderState("rendering");
+    } else if (initialRenderData?.status === "failed") {
+      setRenderState("error");
+      setErrorMsg(initialRenderData.error || "Previous render failed.");
+    }
+  }, [initialRenderData]);
+
+  const startRender = async () => {
+    try {
+      setRenderState("rendering");
+      setProgress(0);
+      setElapsed(0);
+      setPhase("Starting render job...");
+      setErrorMsg(null);
+
+      const res = await fetch("/api/ai/render", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId, quality: selectedQuality }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to start render");
+      }
+    } catch (err: any) {
+      setRenderState("error");
+      setErrorMsg(err.message);
+    }
+  };
 
   useEffect(() => {
     if (renderState !== "rendering") return;
-    const prog = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 100) {
-          clearInterval(prog);
-          setTimeout(() => setRenderState("complete"), 600);
-          return 100;
-        }
-        return p + 0.8;
-      });
-    }, 120);
-    const time = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => { clearInterval(prog); clearInterval(time); };
-  }, [renderState]);
 
-  const formatTime = (s: number) => `${Math.floor(s / 60)}m ${s % 60}s`;
+    let timer: NodeJS.Timeout;
+    
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`/api/ai/render/status?projectId=${projectId}`);
+        if (!res.ok) return;
+        
+        const data = await res.json();
+        
+        if (data.status === "completed" || data.status === "complete") {
+          setProgress(100);
+          setPhase("Complete");
+          setVideoUrl(data.videoUrl);
+          setTimeout(() => setRenderState("complete"), 600);
+        } else if (data.status === "failed") {
+          setRenderState("error");
+          setErrorMsg(data.error || "Render failed during processing");
+        } else if (data.status === "rendering" || data.status === "encoding" || data.status === "queued") {
+          setProgress(data.progress || 0);
+          setPhase(data.phase || "Processing...");
+          setElapsed(data.elapsedSeconds || 0);
+        }
+      } catch (err) {
+        // ignore fetch errors, keep polling
+      }
+    };
+
+    pollStatus();
+    timer = setInterval(pollStatus, 2000);
+
+    return () => clearInterval(timer);
+  }, [renderState, projectId]);
+
+  const formatTime = (s: number) => {
+    if (!s) return "0m 0s";
+    return `${Math.floor(s / 60)}m ${s % 60}s`;
+  };
 
   return (
     <div className="flex flex-col h-full gap-5">
@@ -129,7 +189,7 @@ export const RenderStepPanel = ({ projectTitle, onComplete }: Props) => {
 
             <div className="flex justify-end">
               <motion.button
-                onClick={() => setRenderState("rendering")}
+                onClick={startRender}
                 whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(99,102,241,0.4)" }}
                 whileTap={{ scale: 0.97 }}
                 className="px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-base shadow-lg"
@@ -155,7 +215,7 @@ export const RenderStepPanel = ({ projectTitle, onComplete }: Props) => {
                   <h3 className="text-xl font-black text-white">
                     Rendering &ldquo;{projectTitle}&rdquo;
                   </h3>
-                  <p className="text-sm text-white/40 mt-1">ETA: ~02:45 remaining</p>
+                  <p className="text-sm text-white/40 mt-1 animate-pulse">{phase}</p>
                 </div>
                 <div className="flex items-end gap-1">
                   <span className="text-4xl font-black text-white">{Math.round(progress)}</span>
@@ -172,23 +232,8 @@ export const RenderStepPanel = ({ projectTitle, onComplete }: Props) => {
                 />
               </div>
 
-              {/* Step indicators */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {RENDER_STEPS.map((step, i) => (
-                  <div key={i} className={`flex items-center gap-2 text-xs ${
-                    step.status === "done" ? "text-emerald-400"
-                    : step.status === "active" ? "text-amber-400"
-                    : "text-white/20"
-                  }`}>
-                    {step.status === "done" ? "✓"
-                      : step.status === "active" ? <Loader2 className="w-3 h-3 animate-spin" />
-                      : "⚪"}
-                    <span className="font-medium">{step.label}</span>
-                  </div>
-                ))}
-              </div>
-
               <div className="flex items-center gap-4 text-xs text-white/30">
+                <span><Loader2 className="w-3 h-3 inline animate-spin mr-1"/> Rendering on Cloud GPU</span>
                 <span>⏱ {formatTime(elapsed)} elapsed</span>
               </div>
             </div>
@@ -204,6 +249,26 @@ export const RenderStepPanel = ({ projectTitle, onComplete }: Props) => {
           </motion.div>
         )}
 
+        {/* STATE: ERROR */}
+        {renderState === "error" && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex-1 flex flex-col items-center justify-center p-8 rounded-2xl bg-rose-500/5 border border-rose-500/20 text-center"
+          >
+            <AlertCircle className="w-16 h-16 text-rose-500 mb-4" />
+            <h3 className="text-2xl font-black text-white mb-2">Render Failed</h3>
+            <p className="text-rose-400/80 mb-6 max-w-md">{errorMsg}</p>
+            <button
+              onClick={() => setRenderState("selecting")}
+              className="px-6 py-3 rounded-xl bg-rose-500/20 text-rose-400 font-bold hover:bg-rose-500/30 transition-all"
+            >
+              Try Again
+            </button>
+          </motion.div>
+        )}
+
         {/* STATE: COMPLETE */}
         {renderState === "complete" && (
           <motion.div
@@ -212,36 +277,55 @@ export const RenderStepPanel = ({ projectTitle, onComplete }: Props) => {
             animate={{ opacity: 1, scale: 1 }}
             className="flex-1 flex flex-col gap-5"
           >
-            <div className="flex-1 p-8 rounded-2xl bg-emerald-500/[0.05] border border-emerald-500/20 flex flex-col items-center justify-center text-center space-y-5">
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                transition={{ type: "spring", stiffness: 200, damping: 15 }}
-              >
-                <CheckCircle className="w-16 h-16 text-emerald-400" />
-              </motion.div>
-              <div>
-                <h3 className="text-3xl font-black text-white">Render Complete!</h3>
-                <p className="text-white/40 mt-2">Your masterpiece is ready to launch.</p>
+            <div className="flex-1 p-6 rounded-2xl bg-[#0d0d0d] border border-white/[0.06] flex flex-col items-center justify-center space-y-6">
+              <div className="flex items-center gap-3">
+                 <motion.div
+                   initial={{ scale: 0 }}
+                   animate={{ scale: 1 }}
+                   transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                 >
+                   <CheckCircle className="w-8 h-8 text-emerald-400" />
+                 </motion.div>
+                 <h3 className="text-2xl font-black text-white">Render Complete!</h3>
               </div>
-              <div className="flex items-center gap-4 text-sm text-white/50">
-                <span>Size: 145MB</span>
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span>Duration: 45s</span>
-                <span className="w-1 h-1 rounded-full bg-white/20" />
-                <span>Quality: {selectedQuality.toUpperCase()}</span>
-              </div>
-              <div className="flex gap-3 mt-2">
-                <motion.button
-                  onClick={() => onComplete("https://velora.ai/renders/demo.mp4")}
-                  whileHover={{ scale: 1.04, boxShadow: "0 0 30px rgba(16,185,129,0.4)" }}
-                  whileTap={{ scale: 0.96 }}
-                  className="flex items-center gap-2 px-8 py-4 rounded-xl bg-emerald-500 text-white font-bold text-base"
+              
+              {videoUrl ? (
+                <div className="w-full max-w-2xl aspect-video rounded-xl overflow-hidden bg-black border border-white/10 shadow-2xl relative group">
+                  <video 
+                    src={videoUrl} 
+                    controls 
+                    autoPlay
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+              ) : (
+                <div className="w-full max-w-2xl aspect-video rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+                  <p className="text-white/40">Video preview unavailable</p>
+                </div>
+              )}
+
+              <div className="flex gap-4 w-full max-w-2xl pt-2">
+                {videoUrl && (
+                  <motion.a
+                    href={videoUrl}
+                    download={`project_${projectId}.mp4`}
+                    target="_blank"
+                    rel="noreferrer"
+                    whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16,185,129,0.2)" }}
+                    whileTap={{ scale: 0.98 }}
+                    className="flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-emerald-500 text-white font-bold text-lg shadow-lg"
+                  >
+                    <Download className="w-5 h-5" /> Download Video
+                  </motion.a>
+                )}
+                <button 
+                  onClick={() => {
+                    onComplete(videoUrl || undefined);
+                    router.push("/dashboard");
+                  }}
+                  className="flex-1 px-6 py-4 rounded-xl border border-white/10 text-white font-semibold text-lg hover:bg-white/[0.04] transition-all text-center"
                 >
-                  <Download className="w-5 h-5" /> Download Video
-                </motion.button>
-                <button className="px-6 py-4 rounded-xl border border-white/10 text-white/50 font-semibold text-sm hover:bg-white/[0.04] transition-all">
-                  Start New Project
+                  Finish Project
                 </button>
               </div>
             </div>
