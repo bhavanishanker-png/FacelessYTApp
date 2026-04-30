@@ -14,6 +14,13 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      authorization: {
+        params: {
+          scope: "openid email profile https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/yt-analytics.readonly",
+          access_type: "offline",
+          prompt: "consent",
+        },
+      },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -64,7 +71,14 @@ export const authOptions: NextAuthOptions = {
               name: user.name,
               email: user.email,
               image: user.image,
+              googleAccessToken: account?.access_token,
+              googleRefreshToken: account?.refresh_token,
             });
+          } else {
+            // Update tokens on each login if provided
+            if (account?.access_token) existingUser.googleAccessToken = account.access_token;
+            if (account?.refresh_token) existingUser.googleRefreshToken = account.refresh_token;
+            await existingUser.save();
           }
           return true;
         } catch (error) {

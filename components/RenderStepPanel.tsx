@@ -1,7 +1,7 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Loader2, CheckCircle, XCircle, ChevronLeft, Cloud, AlertCircle } from "lucide-react";
+import { Download, Loader2, CheckCircle, XCircle, ChevronLeft, Cloud, AlertCircle, PlaySquare, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Props {
@@ -31,6 +31,28 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const router = useRouter();
+
+  const [channels, setChannels] = useState<any[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string>("");
+  const [ytStatus, setYtStatus] = useState<string>("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [scheduleDate, setScheduleDate] = useState("");
+
+  useEffect(() => {
+    async function fetchChannels() {
+      try {
+        const res = await fetch("/api/youtube/channels");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.channels?.length > 0) {
+            setChannels(data.channels);
+            setSelectedChannelId(data.channels[0].channelId);
+          }
+        }
+      } catch (e) {}
+    }
+    fetchChannels();
+  }, []);
 
   useEffect(() => {
     if (initialRenderData?.status === "completed" && initialRenderData?.videoUrl) {
@@ -108,6 +130,33 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
   const formatTime = (s: number) => {
     if (!s) return "0m 0s";
     return `${Math.floor(s / 60)}m ${s % 60}s`;
+  };
+
+  const handleYoutubeUpload = async (isSchedule = false) => {
+    if (!videoUrl) return;
+    setIsUploading(true);
+    setYtStatus(isSchedule ? "Scheduling..." : "Uploading...");
+    
+    try {
+      const endpoint = isSchedule ? "/api/youtube/schedule" : "/api/youtube/upload";
+      const payload = isSchedule 
+        ? { projectId, scheduledAtISO: new Date(scheduleDate).toISOString(), channelId: selectedChannelId, title: projectTitle, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+        : { videoUrl, title: projectTitle, channelId: selectedChannelId };
+        
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || "Upload failed");
+      setYtStatus(isSchedule ? "Scheduled successfully!" : "Uploaded successfully!");
+    } catch (e: any) {
+      setYtStatus(`Error: ${e.message}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -301,6 +350,60 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
               ) : (
                 <div className="w-full max-w-2xl aspect-video rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
                   <p className="text-white/40">Video preview unavailable</p>
+                </div>
+              )}
+
+              {videoUrl && (
+                <div className="w-full max-w-2xl bg-[#111] border border-white/10 p-4 rounded-xl flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-white font-bold">
+                      <PlaySquare className="w-5 h-5 text-red-500" />
+                      Publish to YouTube
+                    </div>
+                    {channels.length > 0 ? (
+                      <select 
+                        value={selectedChannelId} 
+                        onChange={e => setSelectedChannelId(e.target.value)}
+                        className="bg-black border border-white/20 text-white rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                      >
+                        {channels.map((c: any) => (
+                          <option key={c.channelId} value={c.channelId}>{c.channelName}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <a href="/api/youtube/auth" className="text-sm text-red-400 hover:underline">Connect Channel</a>
+                    )}
+                  </div>
+                  
+                  {channels.length > 0 && (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button 
+                        onClick={() => handleYoutubeUpload(false)}
+                        disabled={isUploading}
+                        className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg font-semibold flex justify-center items-center gap-2 disabled:opacity-50"
+                      >
+                        {isUploading && ytStatus === "Uploading..." ? <Loader2 className="w-4 h-4 animate-spin"/> : <PlaySquare className="w-4 h-4"/>}
+                        Upload Now
+                      </button>
+                      <div className="flex-1 flex gap-2">
+                        <input 
+                          type="datetime-local" 
+                          value={scheduleDate}
+                          onChange={(e) => setScheduleDate(e.target.value)}
+                          className="w-2/3 bg-black border border-white/20 rounded-lg px-3 text-sm text-white"
+                        />
+                        <button 
+                          onClick={() => handleYoutubeUpload(true)}
+                          disabled={!scheduleDate || isUploading}
+                          className="flex-1 bg-white/10 hover:bg-white/20 text-white py-2 rounded-lg font-semibold flex justify-center items-center gap-2 disabled:opacity-50"
+                        >
+                          <Calendar className="w-4 h-4"/>
+                          Schedule
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {ytStatus && <p className="text-xs text-center font-medium text-white/60">{ytStatus}</p>}
                 </div>
               )}
 

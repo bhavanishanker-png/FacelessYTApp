@@ -17,6 +17,25 @@ const UserSchema = new Schema(
     image: {
       type: String,
     },
+    googleRefreshToken: {
+      type: String,
+    },
+    googleAccessToken: {
+      type: String,
+    },
+    youtubeChannels: {
+      type: [
+        {
+          channelId: String,
+          channelName: String,
+          channelImage: String,
+          accessToken: String,
+          refreshToken: String,
+          connectedAt: Date,
+        }
+      ],
+      default: []
+    }
   },
   { timestamps: true }
 );

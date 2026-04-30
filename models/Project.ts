@@ -77,6 +77,18 @@ export interface IProject extends Document {
       error: string;
     };
   };
+  youtube?: {
+    status: "none" | "scheduled" | "published" | "failed";
+    scheduledAt: Date | null;
+    timezone: string;
+    channelId: string;
+    videoId: string;
+    title: string;
+    description: string;
+    tags: string[];
+    visibility: "public" | "private" | "unlisted";
+    error: string;
+  };
 }
 
 const ProjectSchema = new Schema<IProject>(
@@ -184,6 +196,18 @@ const ProjectSchema = new Schema<IProject>(
         fileSizeBytes: { type: Number, default: 0 },
         error: { type: String, default: "" },
       },
+    },
+    youtube: {
+      status: { type: String, enum: ["none", "scheduled", "published", "failed"], default: "none" },
+      scheduledAt: { type: Date, default: null },
+      timezone: { type: String, default: "UTC" },
+      channelId: { type: String, default: "" },
+      videoId: { type: String, default: "" },
+      title: { type: String, default: "" },
+      description: { type: String, default: "" },
+      tags: { type: [String], default: [] },
+      visibility: { type: String, enum: ["public", "private", "unlisted"], default: "private" },
+      error: { type: String, default: "" },
     },
   },
   { timestamps: true }
