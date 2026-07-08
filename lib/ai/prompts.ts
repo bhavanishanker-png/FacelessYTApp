@@ -83,9 +83,9 @@ Rules:
 - Use short, punchy sentences. Absolutely NO fluff.
 - Structure must include: Hook Intro -> Body -> Payoff Ending.
 - Target ~150 words per minute for pacing calculation.
+- EXTREMELY IMPORTANT: You MUST generate enough text to actually fill the requested duration. Calculate the target word count (Duration in minutes x 150 words) and ensure your script reaches this length. For example, a 5-minute video REQUIRES at least 750 words of narration. Do not summarize or skip over points just to finish quickly. Expand on details, tell stories, and give examples to reach the necessary length.
 - If format is "shorts": optimise for extremely fast pacing, zero dead air, and loopable endings.
-- If format is "long": build narrative arcs, use open loops, and provide deep value without dragging.
-- Ensure the total duration aligns with the requested duration.`;
+- If format is "long": build narrative arcs, use open loops, and provide deep, expansive value without dragging.`;
 
 // ─── Scenes Breakdown ─────────────────────────────────────────
 

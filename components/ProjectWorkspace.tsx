@@ -289,6 +289,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
             <RenderStepPanel
               projectId={project._id}
               projectTitle={project.title}
+              durationSeconds={project?.steps?.voice?.durationSeconds}
               initialRenderData={project?.steps?.render}
               onComplete={async (videoUrl) => {
                 await executeUpdate("render", { videoUrl: videoUrl || "", status: "completed" }, "render");

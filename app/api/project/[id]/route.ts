@@ -79,3 +79,52 @@ export async function DELETE(
     );
   }
 }
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || !(session.user as any).id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const userId = (session.user as any).id;
+    const { id } = await params;
+
+    if (!id) {
+      return NextResponse.json({ error: "Project ID is required" }, { status: 400 });
+    }
+
+    const body = await request.json();
+    const { title } = body;
+
+    if (!title || typeof title !== "string" || title.trim().length === 0) {
+      return NextResponse.json({ error: "A valid title is required" }, { status: 400 });
+    }
+
+    await connectDB();
+    const project = await Project.findOneAndUpdate(
+      { _id: id, userId },
+      { title: title.trim() },
+      { new: true }
+    );
+
+    if (!project) {
+      return NextResponse.json(
+        { error: "Project not found or unauthorized access" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(project, { status: 200 });
+  } catch (error: any) {
+    console.error("rename-project API Error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 }
+    );
+  }
+}
+

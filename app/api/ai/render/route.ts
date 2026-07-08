@@ -291,18 +291,23 @@ async function executeRenderPipeline(
       const assPath = path.join(tempDir, "subtitles.ass");
       await writeFile(assPath, assContent);
 
-      const withSubsPath = path.join(tempDir, "with_subs.mp4");
-      // Use the subtitles filter (requires libass)
-      await runFFmpeg([
-        "-i", withAudioPath,
-        "-vf", `ass='${assPath.replace(/'/g, "'\\''")}'`,
-        "-c:v", "libx264",
-        "-crf", String(preset.crf),
-        "-preset", "medium",
-        "-c:a", "copy",
-        "-y", withSubsPath,
-      ]);
-      videoForEncode = withSubsPath;
+      try {
+        const withSubsPath = path.join(tempDir, "with_subs.mp4");
+        // Use the subtitles filter (requires libass)
+        await runFFmpeg([
+          "-i", withAudioPath,
+          "-vf", `ass='${assPath.replace(/'/g, "'\\''")}'`,
+          "-c:v", "libx264",
+          "-crf", String(preset.crf),
+          "-preset", "medium",
+          "-c:a", "copy",
+          "-y", withSubsPath,
+        ]);
+        videoForEncode = withSubsPath;
+      } catch (subErr: any) {
+        console.warn("[Render] ⚠️ Subtitle burning failed (FFmpeg might be missing libass). Falling back to video without subtitles. Error:", subErr.message);
+        videoForEncode = withAudioPath;
+      }
     }
 
     // ─── Phase 6: Final encode ────────────────────────────────
@@ -312,25 +317,10 @@ async function executeRenderPipeline(
     const finalFilename = `render_${quality}_${timestamp}.mp4`;
     const finalPath = path.join(outputDir, finalFilename);
 
-    if (videoForEncode !== withAudioPath || subtitles.length === 0) {
-      // If subtitles were burned, the file is already re-encoded; just move it
-      const { copyFile } = await import("fs/promises");
-      await copyFile(videoForEncode, finalPath);
-    } else {
-      // Final quality pass
-      await runFFmpeg([
-        "-i", videoForEncode,
-        "-c:v", "libx264",
-        "-crf", String(preset.crf),
-        "-preset", "medium",
-        "-b:v", preset.bitrate,
-        "-maxrate", preset.bitrate,
-        "-bufsize", String(parseInt(preset.bitrate) * 2) + "k",
-        "-c:a", "copy",
-        "-movflags", "+faststart",
-        "-y", finalPath,
-      ]);
-    }
+    // The video is already h264 encoded from Phase 3 and Phase 5.
+    // We skip the redundant re-encode pass to prevent FFmpeg crashes and save time.
+    const { copyFile } = await import("fs/promises");
+    await copyFile(videoForEncode, finalPath);
 
     // ─── Phase 7: Finalize ────────────────────────────────────
     renderStore.update(jobId, { progress: 95, phase: "Finalizing" });

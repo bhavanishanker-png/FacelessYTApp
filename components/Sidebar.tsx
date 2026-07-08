@@ -2,16 +2,8 @@
 import React from "react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Sparkles, LayoutDashboard, Film, Clock, FolderOpen, Share2, HelpCircle, LogOut } from "lucide-react";
+import { Sparkles, LayoutDashboard, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const NAV_ITEMS = [
-  { icon: <LayoutDashboard className="w-4 h-4" />, label: "Dashboard", href: "/dashboard" },
-  { icon: <Film className="w-4 h-4" />, label: "Editor", href: "/dashboard" },
-  { icon: <Clock className="w-4 h-4" />, label: "Timeline", href: "/dashboard" },
-  { icon: <FolderOpen className="w-4 h-4" />, label: "Media", href: "/dashboard" },
-  { icon: <Share2 className="w-4 h-4" />, label: "Export", href: "/dashboard" },
-];
 
 export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) => {
   return (
@@ -28,68 +20,35 @@ export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) =
         </Link>
       </div>
 
-      {/* Active Project */}
-      <div className="px-4 py-4 border-b border-[#464554]/10">
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-[#201f1f]">
-          <div className="w-9 h-9 bg-[#6f00be] rounded-lg flex items-center justify-center shrink-0">
-            <Sparkles className="w-4 h-4 text-[#ddb7ff]" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-[#c0c1ff] truncate">Project Alpha</p>
-            <p className="text-[10px] text-[#908fa0]">AI Processing...</p>
-          </div>
-        </div>
-      </div>
-
       {/* Nav */}
       <nav className="flex-1 py-4 px-3 space-y-0.5">
-        {NAV_ITEMS.map(({ icon, label, href }) => {
-          const isActive = label === activeItem;
-          return (
-            <Link
-              key={label}
-              href={href}
-              className={cn(
-                "flex items-center gap-4 px-4 py-3 rounded-xl relative transition-all duration-200 group",
-                isActive
-                  ? "text-[#c0c1ff] bg-[#c0c1ff]/[0.06]"
-                  : "text-[#e5e2e1]/35 hover:bg-[#c0c1ff]/[0.06] hover:text-[#c0c1ff]"
-              )}
-            >
-              {isActive && (
-                <span className="absolute left-0 w-0.5 h-5 bg-[#c0c1ff] rounded-r-full" />
-              )}
-              {icon}
-              <span className="text-[11px] font-semibold uppercase tracking-widest">{label}</span>
-            </Link>
-          );
-        })}
+        <Link
+          href="/dashboard"
+          className={cn(
+            "flex items-center gap-4 px-4 py-3 rounded-xl relative transition-all duration-200 group",
+            activeItem === "Dashboard"
+              ? "text-[#c0c1ff] bg-[#c0c1ff]/[0.06]"
+              : "text-[#e5e2e1]/35 hover:bg-[#c0c1ff]/[0.06] hover:text-[#c0c1ff]"
+          )}
+        >
+          {activeItem === "Dashboard" && (
+            <span className="absolute left-0 w-0.5 h-5 bg-[#c0c1ff] rounded-r-full" />
+          )}
+          <LayoutDashboard className="w-4 h-4" />
+          <span className="text-[11px] font-semibold uppercase tracking-widest">Dashboard</span>
+        </Link>
       </nav>
 
       {/* Bottom */}
-      <div className="px-4 pb-6 space-y-3">
-        <button className="w-full py-2.5 rounded-xl border border-[#c0c1ff]/15 text-[#c0c1ff] text-[11px] font-bold uppercase tracking-widest hover:bg-[#c0c1ff]/10 transition-all">
-          Upgrade Plan
-        </button>
-        <div className="pt-3 border-t border-[#464554]/10 space-y-0.5">
-          {[
-            { icon: <HelpCircle className="w-4 h-4" />, label: "Help", onClick: () => window.scrollTo({ top: 0, behavior: 'smooth' }) },
-            { icon: <LogOut className="w-4 h-4" />, label: "Logout", danger: true, onClick: () => signOut({ callbackUrl: "/login" }) },
-          ].map(({ icon, label, danger, onClick }) => (
-            <button
-              key={label}
-              onClick={onClick}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest",
-                danger
-                  ? "text-[#e5e2e1]/30 hover:text-[#ffb4ab]"
-                  : "text-[#e5e2e1]/30 hover:text-[#c0c1ff]"
-              )}
-            >
-              {icon}
-              {label}
-            </button>
-          ))}
+      <div className="px-4 pb-6">
+        <div className="pt-3 border-t border-[#464554]/10">
+          <button
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest text-[#e5e2e1]/30 hover:text-[#ffb4ab]"
+          >
+            <LogOut className="w-4 h-4" />
+            Logout
+          </button>
         </div>
       </div>
     </aside>

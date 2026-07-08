@@ -63,23 +63,25 @@ export const StepperNavigation = ({
 
             let nodeClasses = "bg-[#111] border-white/[0.06] text-white/15";
             let labelColor = "text-white/25";
-            let statusLabel = "pending";
             let icon = <Circle className="w-2.5 h-2.5" />;
 
-            if (status === "approved") {
+            const rawStatus = (project?.steps?.[stepId]?.status || "pending").toLowerCase();
+            let statusLabel = rawStatus;
+            
+            if (["completed", "success", "approved", "done"].includes(rawStatus)) {
               nodeClasses = "bg-emerald-500/10 border-emerald-500/20 text-emerald-400";
               labelColor = "text-emerald-400/80";
-              statusLabel = "approved";
               icon = <Check className="w-2.5 h-2.5" />;
-            } else if (status === "editing") {
+            } else if (["editing", "in-progress", "rendering", "generating"].includes(rawStatus)) {
               nodeClasses = "bg-amber-500/10 border-amber-500/20 text-amber-400";
               labelColor = "text-amber-400/80";
-              statusLabel = "in-progress";
               icon = <CircleDot className="w-2.5 h-2.5" />;
+            } else if (["failed", "error"].includes(rawStatus)) {
+              nodeClasses = "bg-rose-500/10 border-rose-500/20 text-rose-400";
+              labelColor = "text-rose-400/80";
             } else if (isAccessible) {
               nodeClasses = "bg-white/[0.04] border-white/10 text-white/40";
               labelColor = "text-white/50";
-              statusLabel = "ready";
             }
 
             if (!isAccessible) {

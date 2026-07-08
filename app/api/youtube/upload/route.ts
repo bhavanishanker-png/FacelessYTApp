@@ -51,8 +51,11 @@ export async function POST(request: Request) {
 
     oauth2Client.setCredentials({
       refresh_token: targetRefreshToken,
-      access_token: targetAccessToken,
     });
+
+    // Explicitly fetch a fresh access token before the stream starts.
+    // The google-auth-library cannot automatically retry a 401 error if the request body is a stream!
+    await oauth2Client.getAccessToken();
 
     const youtube = google.youtube({
       version: "v3",
@@ -129,10 +132,12 @@ export async function POST(request: Request) {
     if (
       error.code === 401 || 
       error?.response?.status === 401 || 
-      error?.errors?.[0]?.reason === "authError"
+      error?.errors?.[0]?.reason === "authError" ||
+      error.message === "invalid_grant" ||
+      error?.response?.data?.error === "invalid_grant"
     ) {
        return NextResponse.json(
-        { error: "YouTube authentication expired or invalid. Please sign out and sign in with Google again." },
+        { error: "YouTube authentication expired or invalid (invalid_grant). Please completely sign out of the app and sign in with Google again to refresh your connection." },
         { status: 401 }
       );
     }

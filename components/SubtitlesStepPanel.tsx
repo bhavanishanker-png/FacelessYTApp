@@ -159,14 +159,17 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, previewImageUrl, scrip
           <h2 className="text-2xl font-black tracking-tight text-white">Subtitle Generation</h2>
           <p className="text-sm text-white/40 mt-1">Review, edit, and style your AI-generated subtitles.</p>
         </div>
-        <button 
-          onClick={handleGenerate}
-          disabled={isGenerating || !audioUrl}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white/60 text-sm font-semibold hover:bg-white/[0.07] transition-all disabled:opacity-50"
-        >
-          {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-indigo-400" />} 
-          {isGenerating ? "Transcribing..." : "AI Re-transcribe"}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button 
+            onClick={handleGenerate}
+            disabled={isGenerating || !audioUrl}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white/60 text-sm font-semibold hover:bg-white/[0.07] transition-all disabled:opacity-50"
+          >
+            {isGenerating ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 text-indigo-400" />} 
+            {isGenerating ? "Transcribing..." : (subtitles.length > 0 ? "AI Re-transcribe" : "Generate Subtitles")}
+          </button>
+          {!audioUrl && <span className="text-[10px] text-rose-400">Generate voiceover first to transcribe</span>}
+        </div>
       </div>
 
       <AnimatePresence>
@@ -187,70 +190,79 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, previewImageUrl, scrip
         {/* LEFT: Subtitle List */}
         <div className="flex flex-col min-h-0">
           <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
-            {subtitles.map((sub, idx) => {
-              const isActive = sub.id === activeId;
-              return (
-                <motion.div
-                  key={sub.id}
-                  onClick={() => {
-                    setActiveId(sub.id);
-                    if (audioRef.current) {
-                      audioRef.current.currentTime = sub.rawStart;
-                      if (!isPlaying) {
-                        audioRef.current.play();
-                        setIsPlaying(true);
+            {subtitles.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full opacity-50 p-6 text-center border border-dashed border-white/10 rounded-xl mt-4">
+                <Sparkles className="w-8 h-8 text-white mb-3 opacity-40" />
+                <p className="text-sm font-bold text-white mb-1">No subtitles yet</p>
+                <p className="text-xs text-white/60">
+                  {audioUrl 
+                    ? "Click the Generate button above to let AI transcribe your audio into highly accurate subtitles."
+                    : "You need to generate a voiceover first before you can create subtitles."}
+                </p>
+              </div>
+            ) : (
+              subtitles.map((sub, idx) => {
+                const isActive = sub.id === activeId;
+                return (
+                  <motion.div
+                    key={sub.id}
+                    onClick={() => {
+                      setActiveId(sub.id);
+                      if (audioRef.current) {
+                        audioRef.current.currentTime = sub.rawStart;
+                        if (!isPlaying) {
+                          audioRef.current.play();
+                          setIsPlaying(true);
+                        }
                       }
-                    }
-                  }}
-                  whileHover={{ x: 2 }}
-                  className={`relative p-4 rounded-xl border cursor-pointer transition-all ${
-                    isActive
-                      ? "border-indigo-500/30 bg-indigo-500/[0.06]"
-                      : "border-white/[0.04] bg-[#111] hover:bg-white/[0.02]"
-                  }`}
-                >
-                  {isActive && (
-                    <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full bg-indigo-500" />
-                  )}
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-[9px] font-mono text-white/30 tracking-widest">
-                      {sub.start} — {sub.end}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      {/* Removed duplicate non-working buttons */}
+                    }}
+                    whileHover={{ x: 2 }}
+                    className={`relative p-4 rounded-xl border cursor-pointer transition-all ${
+                      isActive
+                        ? "border-indigo-500/30 bg-indigo-500/[0.06]"
+                        : "border-white/[0.04] bg-[#111] hover:bg-white/[0.02]"
+                    }`}
+                  >
+                    {isActive && (
+                      <div className="absolute left-0 top-3 bottom-3 w-0.5 rounded-r-full bg-indigo-500" />
+                    )}
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[9px] font-mono text-white/30 tracking-widest">
+                        {sub.start} — {sub.end}
+                      </span>
                     </div>
-                  </div>
-                  <p className={`text-sm leading-relaxed ${isActive ? "text-white" : "text-white/60"}`}>
-                    &ldquo;{sub.text}&rdquo;
-                  </p>
-                  {isActive && (
-                    <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          navigator.clipboard.writeText(sub.text); 
-                        }}
-                        title="Copy Subtitle"
-                        className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-indigo-400 transition-all"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </button>
-                      <button 
-                        onClick={(e) => { 
-                          e.stopPropagation(); 
-                          setSubtitles(prev => prev.filter(s => s.id !== sub.id));
-                          if (activeId === sub.id) setActiveId("");
-                        }}
-                        title="Delete Subtitle"
-                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-all"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  )}
-                </motion.div>
-              );
-            })}
+                    <p className={`text-sm leading-relaxed ${isActive ? "text-white" : "text-white/60"}`}>
+                      &ldquo;{sub.text}&rdquo;
+                    </p>
+                    {isActive && (
+                      <div className="absolute top-3 right-3 flex items-center gap-1.5">
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            navigator.clipboard.writeText(sub.text); 
+                          }}
+                          title="Copy Subtitle"
+                          className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-indigo-400 transition-all"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </button>
+                        <button 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setSubtitles(prev => prev.filter(s => s.id !== sub.id));
+                            if (activeId === sub.id) setActiveId("");
+                          }}
+                          title="Delete Subtitle"
+                          className="p-1.5 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-all"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </motion.div>
+                );
+              })
+            )}
           </div>
         </div>
 

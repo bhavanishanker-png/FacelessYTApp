@@ -1,12 +1,13 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Download, Loader2, CheckCircle, XCircle, ChevronLeft, Cloud, AlertCircle, PlaySquare, Calendar } from "lucide-react";
+import { Download, Loader2, CheckCircle, XCircle, AlertCircle, PlaySquare, Calendar } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface Props {
   projectId: string;
   projectTitle: string;
+  durationSeconds?: number;
   initialRenderData?: any;
   onComplete: (videoUrl?: string) => void;
 }
@@ -14,15 +15,15 @@ interface Props {
 type RenderState = "selecting" | "rendering" | "complete" | "error";
 
 const QUALITY_OPTIONS = [
-  { id: "720p", label: "720p", size: "~50MB", icon: "⚡", desc: "Fast export" },
+  { id: "720p", label: "720p", bitrate: 2500, icon: "⚡", desc: "Fast export" },
   {
-    id: "1080p", label: "1080p", size: "~150MB", icon: "★",
+    id: "1080p", label: "1080p", bitrate: 5000, icon: "★",
     desc: "Recommended", recommended: true
   },
-  { id: "4k", label: "Cinematic 4K", size: "~1.2 GB", icon: "🎬", desc: "Lossless HDR", pro: true },
+  { id: "4k", label: "Cinematic 4K", bitrate: 15000, icon: "🎬", desc: "Lossless HDR", pro: true },
 ];
 
-export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, onComplete }: Props) => {
+export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, initialRenderData, onComplete }: Props) => {
   const [renderState, setRenderState] = useState<RenderState>("selecting");
   const [selectedQuality, setSelectedQuality] = useState("1080p");
   const [progress, setProgress] = useState(0);
@@ -160,7 +161,7 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
   };
 
   return (
-    <div className="flex flex-col h-full gap-5">
+    <div className="flex flex-col h-full gap-5 overflow-hidden">
       {/* Step label */}
       <div>
         <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-widest text-indigo-400">
@@ -181,7 +182,7 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex-1 flex flex-col gap-5"
+            className="flex-1 flex flex-col gap-5 overflow-y-auto"
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {QUALITY_OPTIONS.map((q) => (
@@ -209,7 +210,9 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
                   <span className="text-2xl mb-3 block">{q.icon}</span>
                   <h3 className="text-lg font-black text-white">{q.label}</h3>
                   <p className="text-xs text-white/40 mt-1">{q.desc}</p>
-                  <p className="text-[10px] text-white/25 mt-3 font-mono">{q.size} Est.</p>
+                  <p className="text-[10px] text-white/25 mt-3 font-mono">
+                    ~{durationSeconds ? Math.max(1, Math.round((q.bitrate * durationSeconds) / 8192)) : Math.round(q.bitrate / 50)} MB Est.
+                  </p>
                   {selectedQuality === q.id && (
                     <div className="absolute bottom-3 right-3 w-5 h-5 rounded-full border-2 border-indigo-500 bg-indigo-500 flex items-center justify-center">
                       <div className="w-2 h-2 rounded-full bg-white" />
@@ -224,9 +227,9 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 {[
                   { label: "Resolution", value: selectedQuality === "4k" ? "3840 × 2160" : selectedQuality === "1080p" ? "1920 × 1080" : "1280 × 720" },
-                  { label: "Frame Rate", value: "24 fps" },
-                  { label: "AI Model", value: "Cinema-V3 Ultra" },
-                  { label: "Asset Stitching", value: "Active" },
+                  { label: "Est. Duration", value: durationSeconds ? `${Math.floor(durationSeconds / 60)}m ${Math.floor(durationSeconds % 60)}s` : "Unknown" },
+                  { label: "AI Target", value: "Cinema-V3 Ultra" },
+                  { label: "Audio Mix", value: "Auto-leveled" },
                 ].map(({ label, value }) => (
                   <div key={label}>
                     <p className="text-[9px] uppercase tracking-widest text-white/25 mb-1">{label}</p>
@@ -256,7 +259,7 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex-1 flex flex-col gap-5"
+            className="flex-1 flex flex-col gap-5 overflow-y-auto"
           >
             <div className="p-6 rounded-2xl bg-[#0d0d0d] border border-white/[0.06] space-y-5">
               <div className="flex items-start justify-between">
@@ -324,7 +327,7 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
             key="complete"
             initial={{ opacity: 0, scale: 0.96 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex-1 flex flex-col gap-5"
+            className="flex-1 flex flex-col gap-5 overflow-y-auto"
           >
             <div className="flex-1 p-6 rounded-2xl bg-[#0d0d0d] border border-white/[0.06] flex flex-col items-center justify-center space-y-6">
               <div className="flex items-center gap-3">
@@ -361,15 +364,18 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
                       Publish to YouTube
                     </div>
                     {channels.length > 0 ? (
-                      <select 
-                        value={selectedChannelId} 
-                        onChange={e => setSelectedChannelId(e.target.value)}
-                        className="bg-black border border-white/20 text-white rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
-                      >
-                        {channels.map((c: any) => (
-                          <option key={c.channelId} value={c.channelId}>{c.channelName}</option>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-3">
+                        <select 
+                          value={selectedChannelId} 
+                          onChange={e => setSelectedChannelId(e.target.value)}
+                          className="bg-black border border-white/20 text-white rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        >
+                          {channels.map((c: any) => (
+                            <option key={c.channelId} value={c.channelId}>{c.channelName}</option>
+                          ))}
+                        </select>
+                        <a href="/api/youtube/auth" className="text-[10px] text-white/40 hover:text-white underline">Reconnect</a>
+                      </div>
                     ) : (
                       <a href="/api/youtube/auth" className="text-sm text-red-400 hover:underline">Connect Channel</a>
                     )}
@@ -436,18 +442,7 @@ export const RenderStepPanel = ({ projectId, projectTitle, initialRenderData, on
         )}
       </AnimatePresence>
 
-      {/* Footer */}
-      {renderState === "selecting" && (
-        <div className="shrink-0 flex items-center justify-between pt-4 border-t border-white/[0.04]">
-          <button className="flex items-center gap-1.5 text-white/40 text-sm hover:text-white/70 transition-all">
-            <ChevronLeft className="w-4 h-4" /> Back to Editor
-          </button>
-          <div className="flex items-center gap-3 text-xs text-white/25">
-            <Cloud className="w-4 h-4 text-indigo-400/50" />
-            Auto-syncing to cloud library
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

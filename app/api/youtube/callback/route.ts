@@ -73,13 +73,16 @@ export async function GET(request: Request) {
     if (!user.googleRefreshToken && tokens.refresh_token) {
       user.googleRefreshToken = tokens.refresh_token;
       user.googleAccessToken = tokens.access_token;
+      user.markModified("googleRefreshToken");
+      user.markModified("googleAccessToken");
     }
 
+    user.markModified("youtubeChannels");
     await user.save();
 
-    return NextResponse.redirect(new URL("/dashboard/settings?success=ChannelConnected", request.url));
+    return NextResponse.redirect(new URL("/dashboard?success=ChannelConnected", request.url));
   } catch (error: any) {
     console.error("YouTube OAuth Callback Error:", error);
-    return NextResponse.redirect(new URL("/dashboard/settings?error=AuthFailed", request.url));
+    return NextResponse.redirect(new URL("/dashboard?error=AuthFailed", request.url));
   }
 }
