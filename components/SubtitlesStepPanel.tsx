@@ -1,26 +1,29 @@
 "use client";
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ChevronRight, RefreshCw, Copy, Trash2, PenLine } from "lucide-react";
+import { Sparkles, ChevronRight, RefreshCw, Copy, Trash2, PenLine, Play, Pause } from "lucide-react";
 
 interface Subtitle {
   id: string;
   text: string;
   start: string;
   end: string;
+  rawStart: number;
+  rawEnd: number;
 }
 
 const DEMO_SUBTITLES: Subtitle[] = [
-  { id: "1", text: "The future of AI-driven video production is here, allowing creators to focus purely on the visual narrative.", start: "00:04", end: "00:08" },
-  { id: "2", text: "Every stitch of code woven into a tapestry of infinite possibilities.", start: "00:12", end: "00:16" },
-  { id: "3", text: "Welcome to the Velora Edit. Let's begin the final render process together.", start: "00:18", end: "00:22" },
-  { id: "4", text: "The neural engine processes each frame with cinematic precision and detail.", start: "00:24", end: "00:29" },
-  { id: "5", text: "AI is not replacing creativity — it's amplifying it beyond imagination.", start: "00:30", end: "00:35" },
+  { id: "1", text: "The future of AI-driven video production is here, allowing creators to focus purely on the visual narrative.", start: "00:04", end: "00:08", rawStart: 4, rawEnd: 8 },
+  { id: "2", text: "Every stitch of code woven into a tapestry of infinite possibilities.", start: "00:12", end: "00:16", rawStart: 12, rawEnd: 16 },
+  { id: "3", text: "Welcome to the Velora Edit. Let's begin the final render process together.", start: "00:18", end: "00:22", rawStart: 18, rawEnd: 22 },
+  { id: "4", text: "The neural engine processes each frame with cinematic precision and detail.", start: "00:24", end: "00:29", rawStart: 24, rawEnd: 29 },
+  { id: "5", text: "AI is not replacing creativity — it's amplifying it beyond imagination.", start: "00:30", end: "00:35", rawStart: 30, rawEnd: 35 },
 ];
 
 interface Props {
   projectId: string;
   audioUrl?: string;
+  previewImageUrl?: string;
   script: string;
   stepData?: any;
   initialSubtitles?: any;
@@ -32,7 +35,7 @@ const FONT_SIZES = [16, 20, 24, 32];
 const COLORS = ["#c0c1ff", "#f9fafb", "#f59e0b", "#10b981"];
 const POSITIONS = ["top-left", "top-center", "top-right", "mid-left", "mid-center", "mid-right", "bot-left", "bot-center", "bot-right"];
 
-export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, initialSubtitles, onApprove, onAutoSave }: Props) => {
+export const SubtitlesStepPanel = ({ projectId, audioUrl, previewImageUrl, script, stepData, initialSubtitles, onApprove, onAutoSave }: Props) => {
   const [subtitles, setSubtitles] = useState<Subtitle[]>([]);
   const [activeId, setActiveId] = useState<string>("");
   const [fontSize, setFontSize] = useState(stepData?.fontSize ?? 24);
@@ -44,6 +47,39 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const togglePlay = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
+
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      const time = audioRef.current.currentTime;
+      // Use setSubtitles to get the latest state without closure staleness
+      setSubtitles(currentSubtitles => {
+        const currentSub = [...currentSubtitles].reverse().find(s => time >= s.rawStart && time <= s.rawEnd);
+        if (currentSub) {
+          setActiveId(prev => prev !== currentSub.id ? currentSub.id : prev);
+        } else {
+          // If we are outside of any subtitle's time range, we could clear it, but 
+          // usually we just leave the last one or clear it depending on preference.
+          // For now, let's clear it if there's no active subtitle to perfectly match voice.
+          setActiveId(prev => prev !== "" ? "" : prev);
+        }
+        return currentSubtitles; // no state change for subtitles
+      });
+    }
+  };
 
   React.useEffect(() => {
     if (initialSubtitles?.data && initialSubtitles.data.length > 0) {
@@ -156,7 +192,16 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
               return (
                 <motion.div
                   key={sub.id}
-                  onClick={() => setActiveId(sub.id)}
+                  onClick={() => {
+                    setActiveId(sub.id);
+                    if (audioRef.current) {
+                      audioRef.current.currentTime = sub.rawStart;
+                      if (!isPlaying) {
+                        audioRef.current.play();
+                        setIsPlaying(true);
+                      }
+                    }
+                  }}
                   whileHover={{ x: 2 }}
                   className={`relative p-4 rounded-xl border cursor-pointer transition-all ${
                     isActive
@@ -171,17 +216,8 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
                     <span className="text-[9px] font-mono text-white/30 tracking-widest">
                       {sub.start} — {sub.end}
                     </span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100">
-                      {isActive && (
-                        <>
-                          <button className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-white/70 transition-all">
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button className="p-1.5 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-all">
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </>
-                      )}
+                    <div className="flex items-center gap-1">
+                      {/* Removed duplicate non-working buttons */}
                     </div>
                   </div>
                   <p className={`text-sm leading-relaxed ${isActive ? "text-white" : "text-white/60"}`}>
@@ -189,10 +225,25 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
                   </p>
                   {isActive && (
                     <div className="absolute top-3 right-3 flex items-center gap-1.5">
-                      <button className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-indigo-400 transition-all">
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          navigator.clipboard.writeText(sub.text); 
+                        }}
+                        title="Copy Subtitle"
+                        className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-indigo-400 transition-all"
+                      >
                         <Copy className="w-3 h-3" />
                       </button>
-                      <button className="p-1.5 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-all">
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setSubtitles(prev => prev.filter(s => s.id !== sub.id));
+                          if (activeId === sub.id) setActiveId("");
+                        }}
+                        title="Delete Subtitle"
+                        className="p-1.5 rounded-lg hover:bg-rose-500/10 text-white/30 hover:text-rose-400 transition-all"
+                      >
                         <Trash2 className="w-3 h-3" />
                       </button>
                     </div>
@@ -207,13 +258,30 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
         <div className="space-y-4 overflow-y-auto hide-scrollbar">
           {/* Video Preview */}
           <div className="relative rounded-2xl overflow-hidden aspect-video bg-[#080808] border border-white/[0.06]">
+            {audioUrl && (
+              <audio 
+                ref={audioRef} 
+                src={audioUrl} 
+                onTimeUpdate={handleTimeUpdate}
+                onEnded={() => setIsPlaying(false)}
+              />
+            )}
             <img
-              src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&q=80"
+              src={previewImageUrl || "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&q=80"}
               alt="Preview"
               className="w-full h-full object-cover opacity-70"
             />
             <div className="absolute top-2 left-2 px-2 py-0.5 rounded-md bg-rose-500/80 text-white text-[9px] font-bold uppercase tracking-widest">
               Live Preview
+            </div>
+
+            <div className="absolute inset-0 flex items-center justify-center">
+              <button
+                onClick={togglePlay}
+                className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-md border border-white/20 flex items-center justify-center hover:bg-black/60 hover:scale-105 transition-all text-white shadow-xl"
+              >
+                {isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 ml-1 text-white" />}
+              </button>
             </div>
             {/* Subtitle overlay */}
             <AnimatePresence>
@@ -223,7 +291,18 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 4 }}
-                  className="absolute bottom-6 left-4 right-4 flex justify-center"
+                  className={`absolute flex w-full p-4 ${
+                    selectedPosition === "top-left" ? "top-2 left-0 justify-start" :
+                    selectedPosition === "top-center" ? "top-2 left-0 justify-center" :
+                    selectedPosition === "top-right" ? "top-2 right-0 justify-end" :
+                    selectedPosition === "center-left" ? "top-1/2 -translate-y-1/2 left-0 justify-start" :
+                    selectedPosition === "center" ? "top-1/2 -translate-y-1/2 left-0 justify-center" :
+                    selectedPosition === "center-right" ? "top-1/2 -translate-y-1/2 right-0 justify-end" :
+                    selectedPosition === "bottom-left" ? "bottom-6 left-0 justify-start" :
+                    selectedPosition === "bottom-center" ? "bottom-6 left-0 justify-center" :
+                    selectedPosition === "bottom-right" ? "bottom-6 right-0 justify-end" :
+                    "bottom-6 left-0 justify-center"
+                  }`}
                 >
                   <span
                     className={`px-4 py-2 rounded-xl text-center text-sm leading-relaxed ${
@@ -231,7 +310,7 @@ export const SubtitlesStepPanel = ({ projectId, audioUrl, script, stepData, init
                     } ${isBold ? "font-black" : "font-semibold"} ${isItalic ? "italic" : ""}`}
                     style={{ color: selectedColor, fontSize: `${fontSize * 0.6}px` }}
                   >
-                    {activeSubtitle.text.substring(0, 40)}...
+                    {activeSubtitle.text}
                   </span>
                 </motion.div>
               )}

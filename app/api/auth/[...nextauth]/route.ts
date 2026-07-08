@@ -12,15 +12,8 @@ export const authOptions: NextAuthOptions = {
   },
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      authorization: {
-        params: {
-          scope: "openid email profile https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/yt-analytics.readonly",
-          access_type: "offline",
-          prompt: "consent",
-        },
-      },
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -94,7 +87,7 @@ export const authOptions: NextAuthOptions = {
         token.id = user.id;
         token.email = user.email;
       }
-      
+
       // If signing in with Google, we might need to fetch the DB user ID
       if (account?.provider === "google" && user?.email) {
         await connectDB();

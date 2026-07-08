@@ -70,17 +70,7 @@ export const ScriptStepPanel = ({
     return () => clearTimeout(timer);
   }, [script, hasGenerated, onAutoSave]);
 
-  /* ── Auto-resize textarea ── */
-  const autoResize = useCallback(() => {
-    const el = textareaRef.current;
-    if (!el) return;
-    el.style.height = "auto";
-    el.style.height = `${Math.max(el.scrollHeight, 320)}px`;
-  }, []);
-
-  useEffect(() => {
-    autoResize();
-  }, [script, autoResize]);
+  /* ── Textarea scroll handler (removed auto-resize to keep button visible) ── */
 
   /* ── Generate script ── */
   const handleGenerate = async () => {
@@ -266,11 +256,11 @@ export const ScriptStepPanel = ({
             </div>
 
             {/* ── Editor Container ── */}
-            <div className="relative flex-1 mb-4 group">
+            <div className="relative flex-1 mb-4 group flex flex-col min-h-0">
               {/* Glow border on focus */}
               <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-violet-500/20 via-transparent to-purple-500/10 opacity-0 group-focus-within:opacity-100 transition-opacity duration-500 pointer-events-none" />
 
-              <div className="relative rounded-2xl bg-[#080808] border border-white/[0.06] group-focus-within:border-violet-500/20 transition-all duration-300 overflow-hidden">
+              <div className="relative flex-1 flex flex-col min-h-0 rounded-2xl bg-[#080808] border border-white/[0.06] group-focus-within:border-violet-500/20 transition-all duration-300 overflow-hidden">
                 {/* Editor top bar */}
                 <div className="flex items-center justify-between px-6 py-3 border-b border-white/[0.04] bg-white/[0.01]">
                   <div className="flex items-center gap-2">
@@ -282,7 +272,7 @@ export const ScriptStepPanel = ({
                 </div>
 
                 {/* Textarea */}
-                <div className="relative">
+                <div className="relative flex-1 min-h-0">
                   <textarea
                     ref={textareaRef}
                     value={script}
@@ -290,9 +280,9 @@ export const ScriptStepPanel = ({
                     disabled={isGenerating}
                     spellCheck={false}
                     className={cn(
-                      "w-full bg-transparent px-6 py-6 text-white/85 text-[15px] leading-[2] font-[420]",
+                      "absolute inset-0 w-full h-full bg-transparent px-6 py-6 text-white/85 text-[15px] leading-[2] font-[420]",
                       "placeholder:text-white/10 resize-none focus:outline-none",
-                      "hide-scrollbar min-h-[320px]",
+                      "overflow-y-auto custom-scrollbar",
                       "transition-opacity duration-200",
                       "selection:bg-violet-500/30",
                       isGenerating && "opacity-30"

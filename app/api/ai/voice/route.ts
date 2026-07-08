@@ -1,12 +1,12 @@
 /**
  * POST /api/ai/voice
  *
- * Generates narration audio from script text using OpenAI TTS.
+ * Generates narration audio from script text using Deepgram Aura TTS.
  *
  * Supports:
- *  - 6 voice options (alloy, echo, fable, onyx, nova, shimmer)
- *  - Speed control (0.25–4.0)
- *  - Saves audio as .mp3 to /public/audio/{projectId}/
+ *  - 4 voice options mapped to UI (male-deep, female-calm, energetic, storytelling)
+ *  - Speed control
+ *  - Saves audio to Cloudinary
  *  - Persists results to MongoDB steps.voice
  */
 
@@ -15,39 +15,26 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import Project from "@/models/Project";
-import OpenAI from "openai";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
+import { DeepgramClient } from "@deepgram/sdk";
 import type { VoiceId } from "@/lib/ai/types";
 
 // ─── Voice Metadata ───────────────────────────────────────────
 
-const VALID_VOICES: VoiceId[] = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"];
+const VALID_VOICES: VoiceId[] = ["male-deep", "female-calm", "energetic", "storytelling"];
 
 const VOICE_DESCRIPTIONS: Record<VoiceId, string> = {
-  alloy: "Neutral, balanced",
-  echo: "Warm, conversational",
-  fable: "British, narrative",
-  onyx: "Deep, authoritative",
-  nova: "Friendly, upbeat",
-  shimmer: "Soft, expressive",
+  "male-deep": "Deep, authoritative (Aura Orion)",
+  "female-calm": "Soft, expressive (Aura Asteria)",
+  "energetic": "Friendly, upbeat (Aura Arcas)",
+  "storytelling": "British, narrative (Aura Helios)",
 };
 
-// ─── OpenAI Client ────────────────────────────────────────────
-
-let openaiClient: OpenAI | null = null;
-
-function getOpenAI(): OpenAI {
-  if (openaiClient) return openaiClient;
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("Missing OPENAI_API_KEY — add it to .env.local");
-  }
-
-  openaiClient = new OpenAI({ apiKey });
-  return openaiClient;
-}
+const VOICE_MAPPING: Record<string, string> = {
+  "male-deep": "aura-orion-en",
+  "female-calm": "aura-asteria-en",
+  "energetic": "aura-arcas-en",
+  "storytelling": "aura-helios-en",
+};
 
 // ─── Duration Estimator ───────────────────────────────────────
 
@@ -75,7 +62,7 @@ export async function POST(request: Request) {
     const {
       projectId,
       script,
-      voice = "onyx",
+      voice = "male-deep",
       speed = 1.0,
     } = body;
 
@@ -108,10 +95,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Script has no speakable content" }, { status: 400 });
     }
 
-    // 5. Check script length (OpenAI TTS limit is ~4096 chars)
-    if (cleanedScript.length > 4096) {
+    // Deepgram limit is quite high, but let's keep a reasonable bound
+    if (cleanedScript.length > 30000) {
       return NextResponse.json(
-        { error: `Script is too long (${cleanedScript.length} chars). Max is 4096 for TTS.` },
+        { error: `Script is too long (${cleanedScript.length} chars). Max is 30000 for TTS.` },
         { status: 400 }
       );
     }
@@ -123,39 +110,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // 6. Generate audio via OpenAI TTS
-    const openai = getOpenAI();
+    // 5. Generate audio via Deepgram
+    if (!process.env.DEEPGRAM_API_KEY) {
+       return NextResponse.json(
+         { error: "DEEPGRAM_API_KEY is missing from .env.local" },
+         { status: 500 }
+       );
+    }
+
+    const deepgram = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY });
+    const modelId = VOICE_MAPPING[voice as string] || VOICE_MAPPING["male-deep"];
+
+    console.log(`[Voice Gen] Generating audio with Deepgram ${modelId}`);
 
     let audioBuffer: Buffer;
     try {
-      const mp3Response = await openai.audio.speech.create({
-        model: "tts-1-hd",
-        voice: voice as any,
-        input: cleanedScript,
-        speed: clampedSpeed,
-        response_format: "mp3",
+      const response = await deepgram.speak.v1.audio.generate({
+        text: cleanedScript,
+        model: modelId,
+        encoding: "mp3"
       });
 
-      // Get the audio data as ArrayBuffer then convert to Buffer
-      const arrayBuffer = await mp3Response.arrayBuffer();
+      const arrayBuffer = await response.arrayBuffer();
       audioBuffer = Buffer.from(arrayBuffer);
+
     } catch (ttsError: any) {
-      console.error("[Voice Gen] TTS API error:", ttsError.message);
-
-      if (ttsError.status === 429) {
-        return NextResponse.json(
-          { error: "Rate limited by OpenAI. Please wait and try again.", code: "RATE_LIMITED" },
-          { status: 429 }
-        );
-      }
-
+      console.error("[Voice Gen] Deepgram API error:", ttsError.message);
       return NextResponse.json(
-        { error: `TTS generation failed: ${ttsError.message}` },
+        { error: `TTS generation failed: ${ttsError.message}. Make sure your Deepgram API Key is valid.` },
         { status: 500 }
       );
     }
 
-    // 7. Upload audio file to Cloudinary
+    // 6. Upload audio file to Cloudinary
     const { uploadBufferToCloudinary } = await import("@/lib/storage");
     const timestamp = Date.now();
     const publicId = `voiceover_${voice}_${timestamp}`;
@@ -170,17 +157,17 @@ export async function POST(request: Request) {
 
     const audioUrl = uploadResult.url;
 
-    // 8. Estimate duration
+    // 7. Estimate duration (Note: Deepgram doesn't return exact duration for TTS, so we estimate)
     const durationSeconds = estimateDuration(cleanedScript, clampedSpeed);
 
-    // 9. Persist to MongoDB
+    // 8. Persist to MongoDB
     project.steps.voice = {
       type: voice,
       voiceId: voice,
       audioUrl,
       durationSeconds,
-      provider: "openai-tts-1-hd",
-      settings: { speed: clampedSpeed, model: "tts-1-hd" },
+      provider: "deepgram-aura",
+      settings: { speed: clampedSpeed, model: modelId },
       status: "completed",
     };
     project.markModified("steps.voice");
@@ -194,19 +181,12 @@ export async function POST(request: Request) {
         voiceId: voice,
         voiceDescription: VOICE_DESCRIPTIONS[voice as VoiceId],
         speed: clampedSpeed,
-        provider: "openai-tts-1-hd",
+        provider: "deepgram-aura",
         fileSizeBytes: audioBuffer.length,
       },
     });
   } catch (error: any) {
     console.error("[/api/ai/voice] Error:", error);
-
-    if (error.message?.includes("OPENAI_API_KEY")) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Add OPENAI_API_KEY to .env.local" },
-        { status: 500 }
-      );
-    }
 
     return NextResponse.json(
       { error: "Internal server error during voice generation" },

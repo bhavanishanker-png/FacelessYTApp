@@ -5,6 +5,7 @@ import { Layers, Mic, Type, ChevronRight, XCircle, Zap } from "lucide-react";
 
 interface Props {
   projectTitle: string;
+  previewImageUrl?: string;
   onApprove: () => void;
 }
 
@@ -15,7 +16,7 @@ const STEPS_LIST = [
   { label: "Final encoding", status: "pending" },
 ];
 
-export const CompositionStepPanel = ({ projectTitle, onApprove }: Props) => {
+export const CompositionStepPanel = ({ projectTitle, previewImageUrl, onApprove }: Props) => {
   const [progress, setProgress] = useState(84);
   const [assetSync, setAssetSync] = useState({ audio: 100, lipSync: 92, colorGrading: 0 });
 
@@ -95,7 +96,7 @@ export const CompositionStepPanel = ({ projectTitle, onApprove }: Props) => {
         {/* Preview */}
         <div className="relative rounded-2xl overflow-hidden bg-[#080808] border border-white/[0.06] min-h-[250px]">
           <img
-            src="https://images.unsplash.com/photo-1617957743098-f2f73b4c5d2c?w=800&q=80"
+            src={previewImageUrl || "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=800&q=80"}
             alt="Composition preview"
             className="w-full h-full object-cover opacity-60"
           />

@@ -15,7 +15,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
 import Project from "@/models/Project";
-import OpenAI from "openai";
+
 import type { ImageStyle, SceneImageOutput } from "@/lib/ai/types";
 
 // ─── Style Prompt Augmentations ───────────────────────────────
@@ -31,21 +31,7 @@ const STYLE_MODIFIERS: Record<ImageStyle, string> = {
     "Clean minimalist illustration, flat design, geometric shapes, limited color palette, whitespace emphasis, modern graphic design, vector art style",
 };
 
-// ─── OpenAI Client ────────────────────────────────────────────
-
-let openaiClient: OpenAI | null = null;
-
-function getOpenAI(): OpenAI {
-  if (openaiClient) return openaiClient;
-
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("Missing OPENAI_API_KEY — add it to .env.local");
-  }
-
-  openaiClient = new OpenAI({ apiKey });
-  return openaiClient;
-}
+// (OpenAI removed - using Pollinations instead)
 
 // ─── Single Image Generator (with retry) ──────────────────────
 
@@ -56,46 +42,48 @@ async function generateSingleImage(
   sceneId: string,
   retries = 2
 ): Promise<{ imageUrl: string; error?: string }> {
-  const openai = getOpenAI();
   const augmentedPrompt = `${prompt}. Style: ${STYLE_MODIFIERS[style]}. Do NOT include any text, watermarks, or logos in the image.`;
+  // Add random seed to avoid hitting the exact same cache/node on retry
+  const seed = Math.floor(Math.random() * 100000000);
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(augmentedPrompt)}?width=1920&height=1080&nologo=true&seed=${seed}`;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const response = await openai.images.generate({
-        model: "dall-e-3",
-        prompt: augmentedPrompt.slice(0, 4000), // DALL-E 3 max prompt length
-        n: 1,
-        size: "1792x1024", // Widescreen for video scenes
-        quality: "standard",
-        response_format: "url",
+      const response = await fetch(pollinationsUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
       });
-
-      const url = response.data?.[0]?.url;
-      if (url) {
-        // Upload to Cloudinary to persist the image
-        const { uploadUrlToCloudinary } = await import("@/lib/storage");
-        const folderPath = `faceless-yt/projects/${projectId}/images`;
-        const result = await uploadUrlToCloudinary(url, folderPath, "image", sceneId);
-        return { imageUrl: result.url };
+      
+      if (!response.ok) {
+        throw new Error(`Pollinations API error: ${response.status}`);
       }
 
-      throw new Error("No image URL in response");
+      const arrayBuffer = await response.arrayBuffer();
+      const buffer = Buffer.from(arrayBuffer);
+
+      // Upload to Cloudinary to persist the image
+      const { uploadBufferToCloudinary } = await import("@/lib/storage");
+      const folderPath = `faceless-yt/projects/${projectId}/images`;
+      const result = await uploadBufferToCloudinary(buffer, folderPath, "image", sceneId);
+      
+      console.log(`[Image Gen] Success! Image generated & saved for scene ${sceneId}`);
+      return { imageUrl: result.url };
     } catch (err: any) {
       console.error(`[Image Gen] Attempt ${attempt + 1} failed for prompt: "${prompt.slice(0, 60)}..."`, err.message);
 
-      // Don't retry on content policy violations or auth errors
-      if (err.status === 400 || err.status === 401 || err.status === 403) {
-        return {
-          imageUrl: "",
-          error: err.status === 400
-            ? "Content policy violation — prompt was rejected"
-            : `Auth error (${err.status})`,
-        };
+      // Fail fast for deterministic configuration errors
+      if (err.message.includes("Invalid cloud_name") || err.message.includes("Must supply api_key")) {
+         return {
+           imageUrl: "",
+           error: `Cloudinary Configuration Error: ${err.message}. Please check your .env.local file.`,
+         };
       }
 
-      // Rate limit — wait and retry
-      if (err.status === 429 && attempt < retries) {
-        const waitMs = Math.min(2000 * (attempt + 1), 10000);
+      // Rate limit or transient error — wait and retry
+      if (attempt < retries) {
+        // Backoff slightly more aggressively for Pollinations
+        const waitMs = Math.min(3000 * (attempt + 1), 12000);
         await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
@@ -202,7 +190,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Generate all images concurrently with controlled concurrency
+    // Generate all images concurrently (restored to 3 now that User-Agent and seed are bypassing rate limits)
     const CONCURRENCY = 3;
     const results: SceneImageOutput[] = [];
 
@@ -265,12 +253,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("[/api/ai/images] Error:", error);
 
-    if (error.message?.includes("OPENAI_API_KEY")) {
-      return NextResponse.json(
-        { error: "OpenAI API key not configured. Add OPENAI_API_KEY to .env.local" },
-        { status: 500 }
-      );
-    }
+
 
     return NextResponse.json(
       { error: "Internal server error during image generation" },

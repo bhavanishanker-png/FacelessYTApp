@@ -16,6 +16,8 @@ export interface AIRequestOptions {
   maxTokens?: number;
   /** Sampling temperature — lower = more deterministic */
   temperature?: number;
+  /** Force native JSON mode (useful for Groq / OpenAI) */
+  jsonMode?: boolean;
 }
 
 // ─── Standard AI Response ─────────────────────────────────────
@@ -139,7 +141,7 @@ export interface ImageGenerationOutput {
 
 // ─── Voice Generation ─────────────────────────────────────────
 
-export type VoiceId = "alloy" | "echo" | "fable" | "onyx" | "nova" | "shimmer";
+export type VoiceId = "male-deep" | "female-calm" | "energetic" | "storytelling";
 
 export interface VoiceGenerationOutput {
   audioUrl: string;

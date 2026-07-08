@@ -30,9 +30,9 @@ export async function POST(request: Request) {
 
     if (channelId && user?.youtubeChannels?.length > 0) {
       const channelInfo = user.youtubeChannels.find((c: any) => c.channelId === channelId);
-      if (channelInfo && channelInfo.refreshToken) {
-        targetRefreshToken = channelInfo.refreshToken;
-        targetAccessToken = channelInfo.accessToken;
+      if (channelInfo) {
+        if (channelInfo.refreshToken) targetRefreshToken = channelInfo.refreshToken;
+        if (channelInfo.accessToken) targetAccessToken = channelInfo.accessToken;
       }
     }
 

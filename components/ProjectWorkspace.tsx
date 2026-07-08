@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -41,6 +41,16 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
   const [selectedHook, setSelectedHook] = useState<string>(stepsData.hook?.editedHook || stepsData.hook?.selectedHook || "");
   const [selectedScript, setSelectedScript] = useState<string>(stepsData.script?.content || "");
   const [selectedScenes, setSelectedScenes] = useState<any[]>(Array.isArray(stepsData.scenes?.data) ? stepsData.scenes.data : []);
+
+  const handleAutoSaveRef = useRef<any>(() => {});
+  const onAutoSaveIdea = useCallback((data: any) => handleAutoSaveRef.current("idea", data), []);
+  const onAutoSaveHook = useCallback((data: any) => handleAutoSaveRef.current("hook", data), []);
+  const onAutoSaveScript = useCallback((data: any) => handleAutoSaveRef.current("script", data), []);
+  const onAutoSaveScenes = useCallback((data: any) => handleAutoSaveRef.current("scenes", data), []);
+  const onAutoSaveImages = useCallback((data: any) => handleAutoSaveRef.current("images", data), []);
+  const onAutoSaveAnimation = useCallback((data: any) => handleAutoSaveRef.current("animation", data), []);
+  const onAutoSaveVoice = useCallback((data: any) => handleAutoSaveRef.current("voice", data), []);
+  const onAutoSaveSubtitles = useCallback((data: any) => handleAutoSaveRef.current("subtitles", data), []);
 
   const advanceTo = (next: StepValue) => {
     if (!project) return;
@@ -130,6 +140,8 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
     }
   };
 
+  handleAutoSaveRef.current = handleAutoSave;
+
   const renderStep = () => {
     switch (viewingStep) {
       case "idea":
@@ -138,7 +150,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
             <IdeaStepPanel
               stepData={project?.steps?.idea}
               projectType={project?.type || "long"}
-              onAutoSave={(data) => handleAutoSave("idea", data)}
+              onAutoSave={onAutoSaveIdea}
               onApprove={async (idea, niche) => {
                 if (idea) setSelectedIdea(idea);
                 await executeUpdate("idea", { userSelected: idea, niche, status: "completed" }, "hook");
@@ -153,7 +165,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
               selectedIdea={selectedIdea}
               niche={project?.steps?.idea?.niche || "General"}
               stepData={project?.steps?.hook}
-              onAutoSave={(data) => handleAutoSave("hook", data)}
+              onAutoSave={onAutoSaveHook}
               onApprove={async (hook) => {
                 if (hook) setSelectedHook(hook);
                 await executeUpdate("hook", { selectedHook: hook, status: "completed" }, "script");
@@ -170,7 +182,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
               format={project?.projectType || "shorts"}
               initialScript={selectedScript}
               stepData={project?.steps?.script}
-              onAutoSave={(data) => handleAutoSave("script", data)}
+              onAutoSave={onAutoSaveScript}
               onApprove={async (script) => {
                 if (script) setSelectedScript(script);
                 await executeUpdate("script", { content: script, status: "completed" }, "scenes");
@@ -184,7 +196,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
             <ScenesStepPanel
               scriptPreview={selectedScript || "Your script will appear here after Step 3 is approved."}
               initialScenes={project?.steps?.scenes?.data}
-              onAutoSave={(data) => handleAutoSave("scenes", data)}
+              onAutoSave={onAutoSaveScenes}
               onApprove={async (scenes) => {
                 if (scenes && scenes.length > 0) setSelectedScenes(scenes);
                 await executeUpdate("scenes", { data: scenes }, "images");
@@ -199,7 +211,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
               projectId={project._id}
               scenes={selectedScenes}
               stepData={project?.steps?.images}
-              onAutoSave={(data) => handleAutoSave("images", data)}
+              onAutoSave={onAutoSaveImages}
               onApprove={async (images) => {
                 await executeUpdate("images", { data: images, status: "completed" }, "animation");
               }}
@@ -210,8 +222,12 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
         return (
           <div className={panelClass}>
             <AnimationStepPanel
-              scenes={selectedScenes}
+              scenes={selectedScenes.map((scene, i) => ({
+                ...scene,
+                imageUrl: project?.steps?.images?.data?.[i]?.imageUrl || scene.imageUrl,
+              }))}
               stepData={project?.steps?.animation}
+              onAutoSave={onAutoSaveAnimation}
               onApprove={async (animData) => await executeUpdate("animation", { ...animData, status: "completed" }, "voice")}
             />
           </div>
@@ -223,7 +239,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
               projectId={project._id}
               scriptPreview={selectedScript || "Your script narration will appear here."}
               initialVoice={project?.steps?.voice}
-              onAutoSave={(data) => handleAutoSave("voice", data)}
+              onAutoSave={onAutoSaveVoice}
               onApprove={async (voiceData) => {
                 const payload = voiceData
                   ? { type: voiceData.voiceType || voiceData.type, voiceId: voiceData.voiceId, audioUrl: voiceData.audioUrl, durationSeconds: voiceData.durationSeconds, settings: voiceData.settings }
@@ -239,10 +255,11 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
             <SubtitlesStepPanel
               projectId={project._id}
               audioUrl={project?.steps?.voice?.audioUrl}
+              previewImageUrl={project?.steps?.images?.data?.[0]?.imageUrl}
               script={selectedScript}
               stepData={project?.steps?.subtitles?.settings}
               initialSubtitles={project?.steps?.subtitles}
-              onAutoSave={(data) => handleAutoSave("subtitles", data)}
+              onAutoSave={onAutoSaveSubtitles}
               onApprove={async (subData) => await executeUpdate("subtitles", { settings: subData, status: "completed" }, "composition")}
             />
           </div>
@@ -252,6 +269,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
           <div className={panelClass}>
             <CompositionStepPanel
               projectTitle={project.title}
+              previewImageUrl={project?.steps?.images?.data?.[0]?.imageUrl}
               onApprove={async () => await executeUpdate("composition", { status: "completed" }, "editor")}
             />
           </div>
@@ -261,7 +279,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
           <div className={panelClass}>
             <EditorStepPanel
               projectTitle={project.title}
-              onApprove={async () => await executeUpdate("editor", { status: "completed" }, "render")}
+              onApprove={async () => await executeUpdate("editor", { status: "completed", editedData: true }, "render")}
             />
           </div>
         );

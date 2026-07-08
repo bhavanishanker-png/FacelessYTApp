@@ -6,6 +6,7 @@ import { Play, Pause, ChevronRight, RefreshCw, ZoomIn, ZoomOut, MoveLeft, MoveRi
 interface Props {
   scenes: any[];
   stepData?: any;
+  onAutoSave?: (data: any) => void;
   onApprove: (data: any) => void;
 }
 
@@ -26,13 +27,47 @@ const SCENE_THUMBS = [
   "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&q=70",
 ];
 
-export const AnimationStepPanel = ({ scenes, stepData, onApprove }: Props) => {
+export const AnimationStepPanel = ({ scenes, stepData, onAutoSave, onApprove }: Props) => {
   const [playing, setPlaying] = useState(false);
   const [selectedPreset, setSelectedPreset] = useState(stepData?.preset || "ken_burns");
   const [selectedTransition, setSelectedTransition] = useState(stepData?.transition || "Cross Dissolve");
   const [intensity, setIntensity] = useState(stepData?.intensity ?? 75);
   const [duration, setDuration] = useState(stepData?.duration ?? 4.5);
   const [activeThumb, setActiveThumb] = useState(0);
+
+  const isFirstRender = React.useRef(true);
+
+  React.useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    const timeout = setTimeout(() => {
+      if (onAutoSave) {
+        onAutoSave({ preset: selectedPreset, transition: selectedTransition, intensity, duration });
+      }
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [selectedPreset, selectedTransition, intensity, duration, onAutoSave]);
+
+  const getThumbSrc = (index: number) => {
+    if (scenes && scenes[index] && scenes[index].imageUrl) {
+      return scenes[index].imageUrl;
+    }
+    return SCENE_THUMBS[index % SCENE_THUMBS.length];
+  };
+
+  const getAnimationProps = () => {
+    if (!playing) return { scale: 1, x: 0, y: 0 };
+    switch (selectedPreset) {
+      case "zoom_in": return { scale: [1, 1.2], x: 0, y: 0 };
+      case "zoom_out": return { scale: [1.2, 1], x: 0, y: 0 };
+      case "pan_left": return { scale: 1.1, x: [0, -20], y: 0 };
+      case "pan_right": return { scale: 1.1, x: [-20, 0], y: 0 };
+      case "ken_burns": return { scale: [1, 1.15], x: [0, -20], y: [0, -10] };
+      default: return { scale: 1, x: 0, y: 0 };
+    }
+  };
 
   return (
     <div className="flex flex-col h-full gap-5">
@@ -52,10 +87,17 @@ export const AnimationStepPanel = ({ scenes, stepData, onApprove }: Props) => {
         <div className="flex flex-col gap-4">
           {/* Video preview */}
           <div className="relative bg-[#080808] rounded-2xl overflow-hidden aspect-video border border-white/[0.06] flex-1 min-h-0">
-            <img
-              src={SCENE_THUMBS[activeThumb]}
+            <motion.img
+              src={getThumbSrc(activeThumb)}
               alt="Preview"
               className="w-full h-full object-cover"
+              animate={getAnimationProps()}
+              transition={{
+                duration: playing ? duration : 0.5,
+                ease: "linear",
+                repeat: playing ? Infinity : 0,
+                repeatType: "reverse"
+              }}
             />
             <div className="absolute inset-0 flex items-center justify-center">
               <button
@@ -79,7 +121,7 @@ export const AnimationStepPanel = ({ scenes, stepData, onApprove }: Props) => {
 
           {/* Scene thumbnails */}
           <div className="flex gap-2 overflow-x-auto hide-scrollbar">
-            {SCENE_THUMBS.map((src, i) => (
+            {(scenes?.length > 0 ? scenes : SCENE_THUMBS).map((scene, i) => (
               <button
                 key={i}
                 onClick={() => setActiveThumb(i)}
@@ -88,7 +130,7 @@ export const AnimationStepPanel = ({ scenes, stepData, onApprove }: Props) => {
                 }`}
                 style={{ width: 80, height: 50 }}
               >
-                <img src={src} alt={`Scene ${i + 1}`} className="w-full h-full object-cover" />
+                <img src={scene.imageUrl || scene} alt={`Scene ${i + 1}`} className="w-full h-full object-cover" />
                 <div className="absolute bottom-0.5 left-0.5 text-[8px] font-bold text-white/70 bg-black/50 px-1 rounded">
                   {String(i + 1).padStart(2, "0")}
                 </div>

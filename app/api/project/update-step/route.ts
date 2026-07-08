@@ -45,12 +45,10 @@ export async function POST(request: Request) {
     }
 
     // 3.5 Step-Specific Validation Rules
-    // These validate content integrity when real data is sent.
-    // Status-only payloads (e.g. { status: "completed" }) are always allowed
-    // so the frontend can advance steps before AI generation is wired.
-    const isStatusOnly = Object.keys(data).every(k => k === "status");
+    // Only strictly validate completion requirements if the step is being advanced or marked completed
+    const isAdvancing = !!nextStep || data.status === "completed";
 
-    if (!isStatusOnly) {
+    if (isAdvancing) {
       if (step === "idea" && !data.userSelected) {
         return NextResponse.json({ error: "Idea step requires 'userSelected' string" }, { status: 400 });
       }
