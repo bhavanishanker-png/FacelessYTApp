@@ -13,6 +13,7 @@ const AnimatedGradientBG = dynamic(() => import("@/components/ui/animated-gradie
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spotlight } from "@/components/ui/spotlight";
+import { SparklesCore } from "@/components/ui/sparkles";
 
 /* ─── Animation Helpers ─── */
 
@@ -290,13 +291,14 @@ export default function LandingPage() {
               </Badge>
             </motion.div>
 
-            {/* Headline — stagger word reveal */}
-            <motion.h1
-              variants={stagger.container}
-              initial="initial"
-              animate="animate"
-              className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8"
-            >
+            <div className="w-full relative flex flex-col items-center justify-center">
+              {/* Headline — stagger word reveal */}
+              <motion.h1
+                variants={stagger.container}
+                initial="initial"
+                animate="animate"
+                className="text-5xl sm:text-6xl md:text-8xl font-black tracking-tighter leading-[0.9] mb-8 relative z-20"
+              >
               {["Generate", "YouTube"].map((word) => (
                 <motion.span key={word} variants={stagger.item} className="inline-block mr-[0.3em] text-gradient-hero">
                   {word}
@@ -311,15 +313,37 @@ export default function LandingPage() {
               <motion.span variants={stagger.item} className="inline-block italic text-[#c0c1ff]">
                 final render.
               </motion.span>
-            </motion.h1>
+              </motion.h1>
+            </div>
 
             {/* Subtext */}
             <motion.p
               {...fadeUp(0.5)}
-              className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto mb-12 leading-relaxed font-medium"
+              className="text-lg md:text-xl text-white/40 max-w-2xl mx-auto mb-6 leading-relaxed font-medium"
             >
               Velora AI automates the workflow of top-tier creators. Scripting, visuals, voiceover, and editing—all synthesized in minutes.
             </motion.p>
+
+            {/* Sparkles Effect below subtext */}
+            <div className="w-full max-w-[40rem] h-24 relative mx-auto hidden md:block mb-10">
+              {/* Gradients */}
+              <div className="absolute inset-x-0 top-0 bg-gradient-to-r from-transparent via-indigo-500 to-transparent h-[2px] w-3/4 blur-sm mx-auto" />
+              <div className="absolute inset-x-0 top-0 bg-gradient-to-r from-transparent via-indigo-500 to-transparent h-px w-3/4 mx-auto" />
+              <div className="absolute inset-x-0 top-0 bg-gradient-to-r from-transparent via-sky-500 to-transparent h-[5px] w-1/4 blur-sm mx-auto" />
+              <div className="absolute inset-x-0 top-0 bg-gradient-to-r from-transparent via-sky-500 to-transparent h-px w-1/4 mx-auto" />
+
+              {/* Core component */}
+              <div className="absolute inset-0 w-full h-full [mask-image:radial-gradient(350px_150px_at_top,white_20%,transparent_100%)]">
+                <SparklesCore
+                  background="transparent"
+                  minSize={0.4}
+                  maxSize={1.5}
+                  particleDensity={800}
+                  className="w-full h-full"
+                  particleColor="#ffffff"
+                />
+              </div>
+            </div>
 
             {/* CTAs */}
             <motion.div {...fadeUp(0.65)} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
@@ -589,13 +613,32 @@ export default function LandingPage() {
             <div className="relative rounded-3xl overflow-hidden">
               <AnimatedGradientBG noise intensity={1.2} className="absolute inset-0" />
               <div className="relative z-10 p-12 md:p-20 text-center border border-white/[0.06] rounded-3xl">
-                <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-6 text-white">
-                  Ready to launch your{" "}
-                  <span className="text-[#c0c1ff]">next viral hit?</span>
-                </h2>
-                <p className="text-lg text-white/40 mb-10 max-w-xl mx-auto font-medium">
+                <div className="relative w-full flex flex-col items-center justify-center">
+                  <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-4 text-white relative z-20">
+                    Ready to launch your{" "}
+                    <span className="text-[#c0c1ff]">next viral hit?</span>
+                  </h2>
+                </div>
+                
+                <p className="text-lg text-white/40 mb-6 max-w-xl mx-auto font-medium">
                   Join 15,000+ creators who have replaced weeks of editing with minutes of AI magic.
                 </p>
+
+                <div className="w-full max-w-[30rem] h-20 relative mx-auto hidden md:block mb-8">
+                  <div className="absolute inset-x-0 top-0 bg-gradient-to-r from-transparent via-indigo-500 to-transparent h-[2px] w-3/4 blur-sm mx-auto" />
+                  <div className="absolute inset-x-0 top-0 bg-gradient-to-r from-transparent via-indigo-500 to-transparent h-px w-3/4 mx-auto" />
+                  
+                  <div className="absolute inset-0 w-full h-full [mask-image:radial-gradient(250px_100px_at_top,white_20%,transparent_100%)]">
+                    <SparklesCore
+                      background="transparent"
+                      minSize={0.4}
+                      maxSize={1}
+                      particleDensity={600}
+                      className="w-full h-full"
+                      particleColor="#ffffff"
+                    />
+                  </div>
+                </div>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
                   <input
                     type="email"

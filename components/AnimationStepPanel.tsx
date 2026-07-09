@@ -1,7 +1,7 @@
 "use client";
-import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Play, Pause, ChevronRight, RefreshCw, ZoomIn, ZoomOut, MoveLeft, MoveRight, Minus, Wind, Clapperboard } from "lucide-react";
+import { ChevronRight, Clapperboard, MoveLeft, MoveRight, Pause, Play, Wind, ZoomIn, ZoomOut } from "lucide-react";
+import React, { useState } from "react";
 
 interface Props {
   scenes: any[];
@@ -70,7 +70,7 @@ export const AnimationStepPanel = ({ scenes, stepData, onAutoSave, onApprove }: 
   };
 
   return (
-    <div className="flex flex-col h-full gap-5">
+    <div className="flex flex-col gap-5">
       {/* Header */}
       <div>
         <div className="flex items-center gap-2 mb-2">
@@ -82,11 +82,11 @@ export const AnimationStepPanel = ({ scenes, stepData, onAutoSave, onApprove }: 
         <p className="text-sm text-white/40 mt-1">Select motion presets and transitions for each scene.</p>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5 min-h-0">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-5">
         {/* LEFT: Preview */}
         <div className="flex flex-col gap-4">
           {/* Video preview */}
-          <div className="relative bg-[#080808] rounded-2xl overflow-hidden aspect-video border border-white/[0.06] flex-1 min-h-0">
+          <div className="relative bg-[#080808] rounded-2xl overflow-hidden aspect-video border border-white/[0.06]">
             <motion.img
               src={getThumbSrc(activeThumb)}
               alt="Preview"
@@ -162,7 +162,7 @@ export const AnimationStepPanel = ({ scenes, stepData, onAutoSave, onApprove }: 
         </div>
 
         {/* RIGHT: Animation Settings */}
-        <div className="flex flex-col gap-5 overflow-y-auto hide-scrollbar">
+        <div className="flex flex-col gap-5">
           <div className="p-5 rounded-2xl bg-[#0d0d0d] border border-white/[0.06] space-y-5">
             {/* AI Motion Presets */}
             <div>

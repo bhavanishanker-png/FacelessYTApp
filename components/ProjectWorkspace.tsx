@@ -1,22 +1,22 @@
 "use client";
-import React, { useState, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "./Sidebar";
-import { StepperNavigation, STEPS, StepValue } from "./StepperNavigation";
-import { IdeaStepPanel } from "./IdeaStepPanel";
-import { HookStepPanel } from "./HookStepPanel";
-import { ScriptStepPanel } from "./ScriptStepPanel";
-import { ScenesStepPanel } from "./ScenesStepPanel";
-import { ImagesStepPanel } from "./ImagesStepPanel";
+import { useCallback, useRef, useState } from "react";
 import { AnimationStepPanel } from "./AnimationStepPanel";
-import { VoiceStepPanel } from "./VoiceStepPanel";
-import { SubtitlesStepPanel } from "./SubtitlesStepPanel";
 import { CompositionStepPanel } from "./CompositionStepPanel";
 import { EditorStepPanel } from "./EditorStepPanel";
-import { RenderStepPanel } from "./RenderStepPanel";
+import { HookStepPanel } from "./HookStepPanel";
+import { IdeaStepPanel } from "./IdeaStepPanel";
+import { ImagesStepPanel } from "./ImagesStepPanel";
 import { ProjectWorkspaceSkeleton } from "./ProjectWorkspaceSkeleton";
+import { RenderStepPanel } from "./RenderStepPanel";
+import { ScenesStepPanel } from "./ScenesStepPanel";
+import { ScriptStepPanel } from "./ScriptStepPanel";
+import { Sidebar } from "./Sidebar";
+import { StepperNavigation, STEPS, StepValue } from "./StepperNavigation";
+import { SubtitlesStepPanel } from "./SubtitlesStepPanel";
+import { VoiceStepPanel } from "./VoiceStepPanel";
 
 export const ProjectWorkspace = ({ project }: { project: any }) => {
   const router = useRouter();
@@ -220,7 +220,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
         );
       case "animation":
         return (
-          <div className={panelClass}>
+          <div className={`${panelClass} overflow-y-auto overscroll-y-contain`}>
             <AnimationStepPanel
               scenes={selectedScenes.map((scene, i) => ({
                 ...scene,

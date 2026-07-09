@@ -15,17 +15,17 @@
  * Returns: { jobId, status: "queued" }
  */
 
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { connectDB } from "@/lib/db";
-import Project from "@/models/Project";
 import { renderStore, type RenderJob } from "@/lib/renderStore";
+import Project from "@/models/Project";
 import { spawn } from "child_process";
-import { writeFile, mkdir, readFile, stat, unlink } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
 import crypto from "crypto";
+import { existsSync } from "fs";
+import { mkdir, stat, writeFile } from "fs/promises";
+import { getServerSession } from "next-auth";
+import { NextResponse } from "next/server";
+import path from "path";
 
 // ─── Quality Presets ──────────────────────────────────────────
 
@@ -73,19 +73,66 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   for (const seg of subtitles) {
     const startStr = formatAssTime(seg.start);
     const endStr = formatAssTime(seg.end);
-    const cleanText = seg.text.replace(/\n/g, "\\N");
+    const cleanText = seg.text
+      .replace(/\\/g, "\\\\")
+      .replace(/[{}]/g, "")
+      .replace(/\n/g, "\\N");
     ass += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,${cleanText}\n`;
   }
 
   return ass;
 }
 
+/** Build an SRT subtitle file from subtitle segments */
+function buildSrtSubtitles(
+  subtitles: { text: string; start: number; end: number }[]
+): string {
+  return subtitles
+    .map((seg, i) => {
+      const startStr = formatSrtTime(seg.start);
+      const endStr = formatSrtTime(seg.end);
+      return `${i + 1}\n${startStr} --> ${endStr}\n${seg.text.trim()}\n`;
+    })
+    .join("\n");
+}
+
+function formatSrtTime(seconds: number): string {
+  const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+  const totalMs = Math.floor(safeSeconds * 1000);
+  const h = Math.floor(totalMs / 3600000);
+  const m = Math.floor((totalMs % 3600000) / 60000);
+  const s = Math.floor((totalMs % 60000) / 1000);
+  const ms = totalMs % 1000;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(ms).padStart(3, "0")}`;
+}
+
 function formatAssTime(seconds: number): string {
-  const h = Math.floor(seconds / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  const s = Math.floor(seconds % 60);
-  const cs = Math.round((seconds % 1) * 100);
+  const safeSeconds = Number.isFinite(seconds) && seconds > 0 ? seconds : 0;
+  const totalCentiseconds = Math.floor(safeSeconds * 100);
+  const h = Math.floor(totalCentiseconds / 360000);
+  const m = Math.floor((totalCentiseconds % 360000) / 6000);
+  const s = Math.floor((totalCentiseconds % 6000) / 100);
+  const cs = totalCentiseconds % 100;
   return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}.${String(cs).padStart(2, "0")}`;
+}
+
+function normalizeSubtitles(input: any): { text: string; start: number; end: number }[] {
+  const raw = Array.isArray(input)
+    ? input
+    : Array.isArray(input?.data)
+      ? input.data
+      : Array.isArray(input?.segments)
+        ? input.segments
+        : [];
+
+  return raw
+    .map((seg: any) => {
+      const start = Number(seg?.start);
+      const end = Number(seg?.end);
+      const text = typeof seg?.text === "string" ? seg.text.trim() : "";
+      return { text, start, end };
+    })
+    .filter((seg: { text: string; start: number; end: number }) => seg.text.length > 0 && Number.isFinite(seg.start) && Number.isFinite(seg.end) && seg.end > seg.start);
 }
 
 /** Run an FFmpeg command and return a promise */
@@ -217,17 +264,50 @@ async function executeRenderPipeline(
           "-y", segPath,
         ]);
       } else {
-        // Ken Burns effect: slow zoom + slight pan
-        const zoomSpeed = 0.0008;
-        const panX = i % 2 === 0 ? "iw/2-(iw/zoom/2)" : "0";
-        const panY = "ih/2-(ih/zoom/2)";
+        // Apply user-selected animation preset from the Animation step
+        const preset_id = animationData?.preset || "ken_burns";
+        const motionIntensity = (animationData?.intensity ?? 75) / 100; // 0-1
+        const maxZoom = 1 + (0.2 * motionIntensity); // between 1.0 and 1.2
+
+        let zoomExpr: string;
+        let panXExpr: string;
+        let panYExpr: string;
+
+        switch (preset_id) {
+          case "zoom_in":
+            zoomExpr = `min(zoom+${(0.001 * motionIntensity).toFixed(5)},${maxZoom})`;
+            panXExpr = "iw/2-(iw/zoom/2)";
+            panYExpr = "ih/2-(ih/zoom/2)";
+            break;
+          case "zoom_out":
+            zoomExpr = `max(zoom-${(0.001 * motionIntensity).toFixed(5)},1)`;
+            panXExpr = "iw/2-(iw/zoom/2)";
+            panYExpr = "ih/2-(ih/zoom/2)";
+            break;
+          case "pan_left":
+            zoomExpr = `${1 + 0.1 * motionIntensity}`;
+            panXExpr = `iw-(iw/zoom)-(iw-(iw/zoom))*on/(${Math.ceil(dur * 25)})`;
+            panYExpr = "ih/2-(ih/zoom/2)";
+            break;
+          case "pan_right":
+            zoomExpr = `${1 + 0.1 * motionIntensity}`;
+            panXExpr = `(iw-(iw/zoom))*on/(${Math.ceil(dur * 25)})`;
+            panYExpr = "ih/2-(ih/zoom/2)";
+            break;
+          case "ken_burns":
+          default:
+            zoomExpr = `min(zoom+${(0.0008 * motionIntensity).toFixed(5)},${maxZoom})`;
+            panXExpr = i % 2 === 0 ? "iw/2-(iw/zoom/2)" : "0";
+            panYExpr = "ih/2-(ih/zoom/2)";
+            break;
+        }
 
         await runFFmpeg([
           "-loop", "1",
           "-i", imgPath,
           "-vf", [
             `scale=${preset.width * 2}:${preset.height * 2}`,
-            `zoompan=z='min(zoom+${zoomSpeed},1.15)':x='${panX}':y='${panY}':d=${Math.ceil(dur * 25)}:s=${preset.width}x${preset.height}:fps=25`,
+            `zoompan=z='${zoomExpr}':x='${panXExpr}':y='${panYExpr}':d=${Math.ceil(dur * 25)}:s=${preset.width}x${preset.height}:fps=25`,
             `fade=t=in:st=0:d=0.3`,
             `fade=t=out:st=${Math.max(0, dur - 0.3)}:d=0.3`,
           ].join(","),
@@ -287,27 +367,89 @@ async function executeRenderPipeline(
     let videoForEncode = withAudioPath;
 
     if (subtitles && subtitles.length > 0) {
+      console.log(`[Render] Burning ${subtitles.length} subtitle segments into video...`);
+
+      // Build both SRT and ASS subtitle files
+      const srtContent = buildSrtSubtitles(subtitles);
+      const srtPath = path.join(tempDir, "subtitles.srt");
+      await writeFile(srtPath, srtContent);
+
       const assContent = buildAssSubtitles(subtitles, preset.width, preset.height, subtitleSettings);
       const assPath = path.join(tempDir, "subtitles.ass");
       await writeFile(assPath, assContent);
 
-      try {
-        const withSubsPath = path.join(tempDir, "with_subs.mp4");
-        // Use the subtitles filter (requires libass)
-        await runFFmpeg([
-          "-i", withAudioPath,
-          "-vf", `ass='${assPath.replace(/'/g, "'\\''")}'`,
-          "-c:v", "libx264",
-          "-crf", String(preset.crf),
-          "-preset", "medium",
-          "-c:a", "copy",
-          "-y", withSubsPath,
-        ]);
-        videoForEncode = withSubsPath;
-      } catch (subErr: any) {
-        console.warn("[Render] ⚠️ Subtitle burning failed (FFmpeg might be missing libass). Falling back to video without subtitles. Error:", subErr.message);
-        videoForEncode = withAudioPath;
+      const withSubsPath = path.join(tempDir, "with_subs.mp4");
+      let subtitlesBurned = false;
+
+      // Strategy 1: Try ASS filter (best quality, needs libass)
+      if (!subtitlesBurned) {
+        try {
+          // Escape the path for the filter by replacing backslashes/colons/single-quotes
+          const escapedAssPath = assPath.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "'\\''");
+          await runFFmpeg([
+            "-i", withAudioPath,
+            "-vf", `ass='${escapedAssPath}'`,
+            "-c:v", "libx264",
+            "-crf", String(preset.crf),
+            "-preset", "medium",
+            "-c:a", "copy",
+            "-y", withSubsPath,
+          ]);
+          videoForEncode = withSubsPath;
+          subtitlesBurned = true;
+          console.log("[Render] ✅ Subtitles burned via ASS filter.");
+        } catch (e: any) {
+          console.warn("[Render] ASS filter failed:", e.message?.substring(0, 200));
+        }
       }
+
+      // Strategy 2: Try SRT subtitles filter (needs libass too, but different syntax)
+      if (!subtitlesBurned) {
+        try {
+          const escapedSrtPath = srtPath.replace(/\\/g, "/").replace(/:/g, "\\:").replace(/'/g, "'\\''");
+          await runFFmpeg([
+            "-i", withAudioPath,
+            "-vf", `subtitles='${escapedSrtPath}':force_style='FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,Outline=2,Shadow=1,Bold=1,MarginV=30'`,
+            "-c:v", "libx264",
+            "-crf", String(preset.crf),
+            "-preset", "medium",
+            "-c:a", "copy",
+            "-y", withSubsPath,
+          ]);
+          videoForEncode = withSubsPath;
+          subtitlesBurned = true;
+          console.log("[Render] ✅ Subtitles burned via SRT subtitles filter.");
+        } catch (e: any) {
+          console.warn("[Render] SRT subtitles filter failed:", e.message?.substring(0, 200));
+        }
+      }
+
+      // Strategy 3: Embed as soft subtitles via mov_text (always works, but player must support them)
+      if (!subtitlesBurned) {
+        try {
+          await runFFmpeg([
+            "-i", withAudioPath,
+            "-i", srtPath,
+            "-c:v", "copy",
+            "-c:a", "copy",
+            "-c:s", "mov_text",
+            "-metadata:s:s:0", "language=eng",
+            "-y", withSubsPath,
+          ]);
+          videoForEncode = withSubsPath;
+          subtitlesBurned = true;
+          console.log("[Render] ✅ Subtitles embedded as soft subs (mov_text). Note: These are NOT burned in — viewer needs to enable CC.");
+        } catch (e: any) {
+          console.warn("[Render] mov_text embedding also failed:", e.message?.substring(0, 200));
+        }
+      }
+
+      if (!subtitlesBurned) {
+        console.error("[Render] ❌ All subtitle strategies failed. Video will NOT have subtitles.");
+        console.error("[Render] To fix: Install FFmpeg with libass: brew install homebrew-ffmpeg/ffmpeg/ffmpeg");
+      }
+    } else {
+      console.log("[Render] No subtitles to burn (0 segments found).");
     }
 
     // ─── Phase 6: Final encode ────────────────────────────────
@@ -445,7 +587,7 @@ export async function POST(request: Request) {
     const images = project.steps?.images?.data || [];
     const scenes = project.steps?.scenes?.data || [];
     const audioUrl = project.steps?.voice?.audioUrl;
-    const subtitles = project.steps?.subtitles?.data || [];
+    const subtitles = normalizeSubtitles(project.steps?.subtitles);
     const subtitleSettings = project.steps?.subtitles?.settings;
     const animationData = project.steps?.animation?.data;
 
