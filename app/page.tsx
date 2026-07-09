@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Spotlight } from "@/components/ui/spotlight";
 import { SparklesCore } from "@/components/ui/sparkles";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 /* ─── Animation Helpers ─── */
 
@@ -438,8 +439,9 @@ export default function LandingPage() {
                   >
                     <motion.div
                       whileHover={{ borderColor: "rgba(255,255,255,0.1)" }}
-                      className="h-full rounded-2xl bg-white/[0.02] border border-white/[0.05] p-8 md:p-10 transition-all duration-500 group"
+                      className="relative h-full rounded-2xl bg-white/[0.02] border border-white/[0.05] p-8 md:p-10 transition-all duration-500 group"
                     >
+                      <GlowingEffect spread={40} glow disabled={false} proximity={64} inactiveZone={0.01} />
                       <div className={`w-12 h-12 rounded-2xl ${feature.bg} border ${feature.border} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300`}>
                         <Icon className={`w-6 h-6 ${feature.color}`} />
                       </div>
@@ -481,8 +483,9 @@ export default function LandingPage() {
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.08, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                   whileHover={{ y: -6, transition: { type: "spring", stiffness: 300 } }}
-                  className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all group cursor-default"
+                  className="relative flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all group cursor-default"
                 >
+                  <GlowingEffect spread={30} glow disabled={false} proximity={48} inactiveZone={0.01} />
                   <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${step.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                     <step.icon className="w-5 h-5 text-white" />
                   </div>
@@ -516,8 +519,9 @@ export default function LandingPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ delay: i * 0.1, duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-                  className="p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all"
+                  className="relative p-6 md:p-8 rounded-2xl bg-white/[0.02] border border-white/[0.05] hover:border-white/[0.1] transition-all"
                 >
+                  <GlowingEffect spread={40} glow disabled={false} proximity={64} inactiveZone={0.01} />
                   <div className="flex gap-0.5 mb-4">
                     {Array.from({ length: t.rating }).map((_, s) => (
                       <Star key={s} className="w-4 h-4 text-amber-400 fill-amber-400" />
@@ -568,6 +572,7 @@ export default function LandingPage() {
                       : "bg-white/[0.02] border-white/[0.05] hover:border-white/[0.1]"
                   }`}
                 >
+                  <GlowingEffect spread={40} glow disabled={false} proximity={64} inactiveZone={0.01} />
                   {plan.popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                       <Badge variant="primary" className="bg-indigo-500 text-white border-indigo-400 px-3 py-1">
@@ -611,6 +616,7 @@ export default function LandingPage() {
         <section className="py-24 md:py-32 flex flex-col items-center justify-center px-6">
           <InViewSection className="max-w-4xl w-full">
             <div className="relative rounded-3xl overflow-hidden">
+              <GlowingEffect spread={60} glow disabled={false} proximity={80} inactiveZone={0.01} />
               <AnimatedGradientBG noise intensity={1.2} className="absolute inset-0" />
               <div className="relative z-10 p-12 md:p-20 text-center border border-white/[0.06] rounded-3xl">
                 <div className="relative w-full flex flex-col items-center justify-center">

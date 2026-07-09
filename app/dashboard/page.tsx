@@ -15,6 +15,7 @@ import { CreateProjectModal } from "@/components/CreateProjectModal";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SkeletonCard } from "@/components/ui/skeleton";
+import { GlowingEffect } from "@/components/ui/glowing-effect";
 
 const NAV_LABELS = ["Dashboard", "Editor", "Timeline", "Media", "Export"] as const;
 type NavLabel = typeof NAV_LABELS[number];
@@ -611,12 +612,13 @@ export default function DashboardPage() {
                   onClick={onClick}
                   whileHover={{ y: -3, transition: { type: "spring", stiffness: 300 } }}
                   whileTap={{ scale: 0.96 }}
-                  className="flex flex-col items-center justify-center gap-2.5 p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-all border border-white/[0.04] hover:border-white/[0.08] group cursor-pointer"
+                  className="relative flex flex-col items-center justify-center gap-2.5 p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-all border border-white/[0.04] hover:border-white/[0.08] group cursor-pointer"
                 >
-                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300`}>
+                  <GlowingEffect spread={30} glow disabled={false} proximity={48} inactiveZone={0.01} />
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300 relative z-10`}>
                     <span className="text-white">{icon}</span>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 group-hover:text-white/60 transition-colors">{label}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 group-hover:text-white/60 transition-colors relative z-10">{label}</span>
                 </motion.button>
               ))}
             </div>
@@ -627,8 +629,12 @@ export default function DashboardPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.4 }}
-            className="col-span-12 lg:col-span-8 rounded-2xl p-5 border border-white/[0.04] bg-white/[0.02] flex flex-col justify-between overflow-hidden relative"
+            className="col-span-12 lg:col-span-8 rounded-2xl p-5 border border-white/[0.04] bg-white/[0.02] flex flex-col justify-between relative"
           >
+            <GlowingEffect spread={50} glow disabled={false} proximity={80} inactiveZone={0.01} />
+            <div className="absolute inset-0 overflow-hidden rounded-2xl pointer-events-none z-0">
+              <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-500/[0.05] blur-[100px] rounded-full pointer-events-none" />
+            </div>
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-1">
                 <h2 className="text-base font-bold tracking-tight text-white">Cloud Storage</h2>
@@ -668,7 +674,6 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-            <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-500/[0.05] blur-[100px] rounded-full pointer-events-none" />
           </motion.div>
 
           {/* ── Recent Projects ── */}
@@ -717,10 +722,13 @@ export default function DashboardPage() {
                       transition={{ delay: 0.05 * i, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       onClick={() => router.push(`/project/${project._id}`)}
                       whileHover={{ y: -4, transition: { type: "spring", stiffness: 300, damping: 20 } }}
-                      className="group bg-white/[0.02] rounded-2xl overflow-hidden cursor-pointer relative border border-white/[0.04] hover:border-white/[0.1] transition-all"
+                      className="group bg-white/[0.02] rounded-2xl cursor-pointer relative border border-white/[0.04] hover:border-white/[0.1] transition-all"
                     >
-                      {/* Thumbnail */}
-                      <div className="relative h-40 overflow-hidden bg-[#0a0a0a]">
+                      <GlowingEffect spread={40} glow disabled={false} proximity={64} inactiveZone={0.01} />
+                      
+                      <div className="relative z-10 overflow-hidden rounded-2xl h-full flex flex-col">
+                        {/* Thumbnail */}
+                        <div className="relative h-40 overflow-hidden bg-[#0a0a0a]">
                         <img
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-40 group-hover:opacity-60"
                           src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&q=80"
@@ -740,7 +748,7 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Info */}
-                      <div className="p-4">
+                      <div className="p-4 relative z-10 bg-[#0d0d0d]/40 backdrop-blur-md flex-1">
                         <h3 className="text-white font-bold mb-1 truncate text-sm group-hover:text-indigo-200 transition-colors">{project.title}</h3>
                         <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3">Step: {project.currentStep}</p>
                         <div className="flex items-center justify-between">
@@ -760,6 +768,7 @@ export default function DashboardPage() {
                             <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
+                      </div>
                       </div>
 
                       {/* Three-dot dropdown */}
