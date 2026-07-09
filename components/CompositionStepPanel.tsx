@@ -147,15 +147,13 @@ export const CompositionStepPanel = ({ projectTitle, previewImageUrl, onApprove 
 
       {/* Footer */}
       <div className="shrink-0 flex items-center justify-end pt-4 border-t border-white/[0.04]">
-        <motion.button
+        <button
           onClick={onApprove}
-          whileHover={{ scale: 1.03, boxShadow: "0 0 20px rgba(99,102,241,0.35)" }}
-          whileTap={{ scale: 0.97 }}
           disabled={progress < 100}
-          className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold text-sm disabled:opacity-50"
+          className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide transition-all duration-200 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
         >
           Publish Now <ChevronRight className="w-4 h-4" />
-        </motion.button>
+        </button>
       </div>
     </div>
   );

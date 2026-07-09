@@ -403,20 +403,19 @@ export const ImagesStepPanel = ({
 
       {/* ── Generate Button ── */}
       {!hasImages && !isGenerating && (
-        <motion.button
+        <button
           onClick={handleGenerateAll}
           disabled={!scenes?.length}
-          whileHover={scenes?.length ? { scale: 1.02 } : {}}
-          whileTap={scenes?.length ? { scale: 0.98 } : {}}
           className={cn(
-            "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6",
-            "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/15",
-            !scenes?.length && "opacity-60 cursor-not-allowed saturate-50"
+            "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6 h-[52px]",
+            !scenes?.length 
+              ? "bg-white/[0.05] border border-white/[0.1] text-white/40 cursor-not-allowed hover:shadow-none hover:translate-y-0"
+              : "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0"
           )}
         >
           <Sparkles className="w-3.5 h-3.5" />
           Generate All Images ({scenes?.length || 0} Scenes)
-        </motion.button>
+        </button>
       )}
 
       {/* ── Progress Bar (during generation) ── */}
@@ -585,21 +584,19 @@ export const ImagesStepPanel = ({
 
           <div className="flex items-center gap-3">
             {/* Regenerate All */}
-            <motion.button
+            <button
               onClick={handleGenerateAll}
               disabled={isGenerating}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
               className="px-4 py-2.5 rounded-xl font-bold text-[12px] tracking-wide flex items-center gap-2
                          bg-white/[0.03] border border-white/[0.06] text-white/40
-                         hover:bg-white/[0.05] hover:text-white/60 hover:border-white/10 transition-all"
+                         hover:bg-white/[0.05] hover:text-white/60 hover:border-white/10 transition-all hover:scale-[1.02] active:scale-[0.98]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               Regenerate All
-            </motion.button>
+            </button>
 
             {/* Approve */}
-            <motion.button
+            <button
               onClick={async () => {
                 if (isApproving) return;
                 setIsApproving(true);
@@ -607,12 +604,10 @@ export const ImagesStepPanel = ({
                 setIsApproving(false);
               }}
               disabled={isApproving || isGenerating}
-              whileHover={!isApproving ? { scale: 1.02 } : {}}
-              whileTap={!isApproving ? { scale: 0.98 } : {}}
               className={cn(
                 "px-6 py-2.5 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all",
                 !isApproving && !isGenerating
-                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/15 hover:shadow-indigo-500/25"
+                  ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0"
                   : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
               )}
             >
@@ -626,7 +621,7 @@ export const ImagesStepPanel = ({
                   <ChevronRight className="w-4 h-4" />
                 </>
               )}
-            </motion.button>
+            </button>
           </div>
         </motion.div>
       )}

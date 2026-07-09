@@ -174,25 +174,24 @@ export const IdeaStepPanel = ({
       </div>
 
       {/* ── Input Section ── */}
-      <form onSubmit={handleGenerate} className="flex gap-3 mb-6">
-        <input
-          type="text"
-          placeholder="e.g. motivation, finance, fitness, AI tools"
-          value={niche}
-          onChange={(e) => setNiche(e.target.value)}
-          disabled={isGenerating}
-          className="flex-1 bg-white/[0.03] border border-white/8 rounded-xl px-5 py-3.5 text-white text-[15px] placeholder:text-white/15 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all duration-200 font-medium disabled:opacity-40"
-        />
-        <motion.button
+      <form onSubmit={handleGenerate} className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex-1">
+          <input
+            type="text"
+            placeholder="e.g. motivation, finance, fitness, AI tools"
+            value={niche}
+            onChange={(e) => setNiche(e.target.value)}
+            disabled={isGenerating}
+            className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-3.5 text-white text-[15px] placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/30 transition-all duration-200 font-medium disabled:opacity-40"
+          />
+        </div>
+        <button
           type="submit"
           disabled={!niche.trim() || isGenerating}
-          whileHover={!isGenerating && niche.trim() ? { scale: 1.02 } : {}}
-          whileTap={!isGenerating && niche.trim() ? { scale: 0.98 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
-            "px-6 py-3.5 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all shrink-0",
-            "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/20",
-            (!niche.trim() || isGenerating) && "opacity-40 cursor-not-allowed saturate-50"
+            "px-6 py-3.5 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2 transition-all shrink-0 h-[52px]",
+            "bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0",
+            (!niche.trim() || isGenerating) && "opacity-50 cursor-not-allowed hover:translate-y-0 hover:shadow-none"
           )}
         >
           {isGenerating ? (
@@ -206,7 +205,7 @@ export const IdeaStepPanel = ({
               {ideas.length > 0 ? "Regenerate" : "Generate"}
             </>
           )}
-        </motion.button>
+        </button>
       </form>
 
       {/* ── Error Banner ── */}
@@ -393,22 +392,19 @@ export const IdeaStepPanel = ({
             className="pt-6 mt-4 border-t border-white/[0.04] flex justify-between items-center"
           >
             {/* Selection hint */}
-            <p className="text-[12px] text-white/20 font-medium">
+            <p className="text-[12px] text-white/30 font-medium">
               {selectedIndex !== null
                 ? `Selected: "${ideas[selectedIndex].title}"`
                 : "Click an idea card to select it"}
             </p>
 
-            <motion.button
+            <button
               onClick={handleApprove}
               disabled={selectedIndex === null || isApproving}
-              whileHover={selectedIndex !== null && !isApproving ? { scale: 1.02 } : {}}
-              whileTap={selectedIndex !== null && !isApproving ? { scale: 0.98 } : {}}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
               className={cn(
                 "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
                 selectedIndex !== null && !isApproving
-                  ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-lg shadow-indigo-500/20 hover:shadow-indigo-500/30"
+                  ? "bg-gradient-to-r from-indigo-500 to-indigo-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0"
                   : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
               )}
             >
@@ -423,7 +419,7 @@ export const IdeaStepPanel = ({
                   <ChevronRight className="w-4 h-4" />
                 </>
               )}
-            </motion.button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

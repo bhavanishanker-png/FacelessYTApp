@@ -9,8 +9,12 @@ import {
   Share2, Bell, Search, Plus, MoreVertical,
   Mic, Captions, ChevronRight, LogOut, X,
   Copy, Trash2, Pencil, ExternalLink, Loader2,
+  Command, Menu,
 } from "lucide-react";
 import { CreateProjectModal } from "@/components/CreateProjectModal";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SkeletonCard } from "@/components/ui/skeleton";
 
 const NAV_LABELS = ["Dashboard", "Editor", "Timeline", "Media", "Export"] as const;
 type NavLabel = typeof NAV_LABELS[number];
@@ -49,6 +53,7 @@ export default function DashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
@@ -218,7 +223,7 @@ export default function DashboardPage() {
   if (status === "loading") {
     // Prevent flickering UI by freezing render until session validates
     return <div className="min-h-screen bg-[#030303] flex items-center justify-center">
-      <div className="w-8 h-8 rounded-full border-2 border-[#6366f1] border-t-transparent animate-spin" />
+      <div className="w-8 h-8 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
     </div>;
   }
 
@@ -228,77 +233,90 @@ export default function DashboardPage() {
     {
       icon: <Sparkles className="w-5 h-5" />,
       label: "AI Script",
-      color: "text-[#c0c1ff]",
-      hover: "hover:bg-[#c0c1ff]/20",
+      color: "text-indigo-400",
+      gradient: "from-indigo-500 to-indigo-600",
       onClick: openCreate,
     },
     {
       icon: <Mic className="w-5 h-5" />,
       label: "Voiceover",
-      color: "text-[#ddb7ff]",
-      hover: "hover:bg-[#ddb7ff]/20",
+      color: "text-purple-400",
+      gradient: "from-purple-500 to-purple-600",
       onClick: openCreate,
     },
     {
       icon: <Film className="w-5 h-5" />,
       label: "B-Roll",
-      color: "text-[#c0c1ff]",
-      hover: "hover:bg-[#c0c1ff]/20",
+      color: "text-sky-400",
+      gradient: "from-sky-500 to-sky-600",
       onClick: openCreate,
     },
     {
       icon: <Captions className="w-5 h-5" />,
       label: "Captions",
-      color: "text-[#ddb7ff]",
-      hover: "hover:bg-[#ddb7ff]/20",
+      color: "text-amber-400",
+      gradient: "from-amber-500 to-amber-600",
       onClick: openCreate,
     },
   ];
 
   return (
-    <div className="min-h-screen bg-[#141313] text-[#e5e2e1] font-sans selection:bg-[#c0c1ff]/20">
+    <div className="min-h-screen bg-[#030303] text-[#e5e2e1] font-sans selection:bg-[#c0c1ff]/20">
 
       {/* ── TOP NAV ── */}
-      <nav className="flex justify-between items-center px-8 h-16 w-full fixed top-0 bg-[#141313]/80 backdrop-blur-xl z-50 border-b border-[#464554]/10">
-        <div className="flex items-center gap-8">
+      <nav className="flex justify-between items-center px-4 md:px-8 h-14 w-full fixed top-0 glass-frosted z-50 border-b border-white/[0.04]">
+        <div className="flex items-center gap-3 md:gap-6">
+          {/* Hamburger for mobile */}
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="md:hidden p-2 rounded-lg hover:bg-white/[0.04] text-white/50 hover:text-white/80 transition-colors"
+            aria-label="Open navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
           <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.3)]">
               <Sparkles className="w-3.5 h-3.5 text-white" />
             </div>
-            <span className="text-lg font-black tracking-tighter text-[#c0c1ff]">Velora Studio</span>
+            <span className="text-base font-black tracking-tighter text-gradient-indigo hidden sm:inline">Velora Studio</span>
           </Link>
-          <div className="hidden md:flex items-center gap-6">
-            <span className="font-bold tracking-tight text-sm text-[#c0c1ff] border-b-2 border-[#c0c1ff] pb-0.5">Projects</span>
+          <div className="hidden md:flex items-center gap-4">
+            <span className="font-bold tracking-tight text-sm text-indigo-400 border-b-2 border-indigo-400 pb-0.5">Projects</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          {/* ── Search ── */}
-          <div className="hidden lg:flex items-center bg-[#0e0e0e] px-4 py-2 rounded-full border border-[#464554]/15 focus-within:border-[#c0c1ff]/30 transition-colors">
-            <Search className="w-4 h-4 text-[#908fa0] mr-2" />
+        <div className="flex items-center gap-3">
+          {/* Search */}
+          <div className="hidden lg:flex items-center bg-white/[0.03] px-3.5 py-2 rounded-xl border border-white/[0.04] focus-within:border-indigo-500/20 focus-within:bg-white/[0.05] transition-all group">
+            <Search className="w-4 h-4 text-white/20 mr-2 group-focus-within:text-indigo-400 transition-colors" />
             <input
-              className="bg-transparent border-none focus:ring-0 text-sm text-[#e5e2e1] w-48 placeholder:text-[#908fa0]/50 outline-none"
+              className="bg-transparent border-none focus:ring-0 text-sm text-white w-44 placeholder:text-white/20 outline-none font-medium"
               placeholder="Search projects..."
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            {searchQuery && (
-              <button onClick={() => setSearchQuery("")} className="text-[#908fa0] hover:text-[#c0c1ff] transition-colors ml-1">
+            {searchQuery ? (
+              <button onClick={() => setSearchQuery("")} className="text-white/20 hover:text-white/50 transition-colors ml-1" aria-label="Clear search">
                 <X className="w-3.5 h-3.5" />
               </button>
+            ) : (
+              <kbd className="hidden xl:inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-white/[0.04] text-[9px] font-bold text-white/15 border border-white/[0.04]">
+                <Command className="w-2.5 h-2.5" />K
+              </kbd>
             )}
           </div>
 
-          {/* ── Notifications ── */}
+          {/* Notifications */}
           <div className="relative" ref={notifRef}>
             <button
               onClick={() => { setShowNotifications(!showNotifications); setShowProfile(false); }}
-              className={`relative text-[#e5e2e1]/50 hover:text-[#c0c1ff] transition-all ${showNotifications ? "text-[#c0c1ff]" : ""}`}
+              className={`relative p-2 rounded-lg hover:bg-white/[0.04] transition-all ${showNotifications ? "text-indigo-400 bg-white/[0.04]" : "text-white/30 hover:text-white/60"}`}
               title="Notifications"
+              aria-label="Notifications"
             >
-              <Bell className="w-5 h-5" />
-              <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#f751a1] rounded-full" />
+              <Bell className="w-4.5 h-4.5" />
+              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full" />
             </button>
             <AnimatePresence>
               {showNotifications && (
@@ -306,52 +324,43 @@ export default function DashboardPage() {
                   initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-80 bg-[#1c1b1b] border border-[#464554]/20 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute right-0 top-12 w-80 bg-[#0d0d0d] border border-white/[0.06] rounded-2xl shadow-2xl z-50 overflow-hidden"
                 >
-                  <div className="px-5 py-4 border-b border-[#464554]/10 flex justify-between items-center">
-                    <h3 className="text-sm font-bold text-[#e5e2e1]">Notifications</h3>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-[#c0c1ff] bg-[#c0c1ff]/10 px-2 py-0.5 rounded-full">3 new</span>
+                  <div className="px-5 py-4 border-b border-white/[0.04] flex justify-between items-center">
+                    <h3 className="text-sm font-bold text-white">Notifications</h3>
+                    <Badge variant="primary" dot pulse size="sm">3 new</Badge>
                   </div>
                   <div className="max-h-72 overflow-y-auto">
                     {[
-                      { title: "Render Complete", desc: "Your video has finished rendering.", time: "2m ago", dot: "bg-[#4ade80]" },
-                      { title: "AI Script Ready", desc: "Script generation completed for your project.", time: "15m ago", dot: "bg-[#c0c1ff]" },
-                      { title: "Storage Warning", desc: "You've used 65% of your cloud storage.", time: "1h ago", dot: "bg-[#f59e0b]" },
+                      { title: "Render Complete", desc: "Your video has finished rendering.", time: "2m ago", variant: "success" as const },
+                      { title: "AI Script Ready", desc: "Script generation completed for your project.", time: "15m ago", variant: "primary" as const },
+                      { title: "Storage Warning", desc: "You've used 65% of your cloud storage.", time: "1h ago", variant: "warning" as const },
                     ].map((n, i) => (
-                      <div key={i} className="px-5 py-3 hover:bg-white/[0.03] transition-colors cursor-pointer border-b border-[#464554]/5 last:border-0">
+                      <div key={i} className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer border-b border-white/[0.02] last:border-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${n.dot}`} />
-                          <span className="text-xs font-bold text-[#e5e2e1]">{n.title}</span>
-                          <span className="ml-auto text-[9px] text-[#908fa0] font-medium">{n.time}</span>
+                          <Badge variant={n.variant} dot size="sm">{n.title}</Badge>
+                          <span className="ml-auto text-[9px] text-white/20 font-medium">{n.time}</span>
                         </div>
-                        <p className="text-[11px] text-[#908fa0] pl-3.5">{n.desc}</p>
+                        <p className="text-[11px] text-white/30 pl-0.5">{n.desc}</p>
                       </div>
                     ))}
                   </div>
-
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
+          {/* Create New */}
+          <Button onClick={openCreate} size="sm" glow icon={<Plus className="w-3.5 h-3.5" />}>
+            Create
+          </Button>
 
-
-          {/* ── Create New ── */}
-          <motion.button
-            onClick={openCreate}
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
-            className="bg-[#8083ff] text-[#07006c] px-5 py-2 rounded-xl text-sm font-bold transition-all"
-          >
-            Create New
-          </motion.button>
-
-          {/* ── Profile ── */}
+          {/* Profile */}
           <div className="relative" ref={profileRef}>
             <button
               onClick={() => { setShowProfile(!showProfile); setShowNotifications(false); }}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center text-white text-xs font-bold cursor-pointer ring-2 ring-transparent hover:ring-[#c0c1ff]/40 transition-all"
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-bold cursor-pointer ring-2 ring-transparent hover:ring-indigo-500/30 transition-all"
             >
               {session?.user?.name?.charAt(0)?.toUpperCase() || "V"}
             </button>
@@ -361,26 +370,24 @@ export default function DashboardPage() {
                   initial={{ opacity: 0, y: 8, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
-                  className="absolute right-0 top-12 w-64 bg-[#1c1b1b] border border-[#464554]/20 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                  transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute right-0 top-12 w-64 bg-[#0d0d0d] border border-white/[0.06] rounded-2xl shadow-2xl z-50 overflow-hidden"
                 >
-                  {/* User info */}
-                  <div className="px-5 py-4 border-b border-[#464554]/10">
+                  <div className="px-5 py-4 border-b border-white/[0.04]">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6366f1] to-[#a855f7] flex items-center justify-center text-white text-sm font-bold">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-bold">
                         {session?.user?.name?.charAt(0)?.toUpperCase() || "V"}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-[#e5e2e1] truncate">{session?.user?.name || "User"}</p>
-                        <p className="text-[10px] text-[#908fa0] truncate">{session?.user?.email || ""}</p>
+                        <p className="text-sm font-bold text-white truncate">{session?.user?.name || "User"}</p>
+                        <p className="text-[10px] text-white/25 truncate">{session?.user?.email || ""}</p>
                       </div>
                     </div>
                   </div>
-
-                  <div className="border-t border-[#464554]/10 py-1">
+                  <div className="py-1">
                     <button
                       onClick={() => signOut({ callbackUrl: "/login" })}
-                      className="w-full flex items-center gap-3 px-5 py-2.5 text-xs font-semibold uppercase tracking-widest text-[#ffb4ab]/70 hover:text-[#ffb4ab] hover:bg-white/[0.03] transition-all"
+                      className="w-full flex items-center gap-3 px-5 py-2.5 text-xs font-semibold text-rose-400/60 hover:text-rose-400 hover:bg-white/[0.02] transition-all"
                     >
                       <LogOut className="w-4 h-4" />
                       Sign Out
@@ -393,24 +400,123 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      {/* ── SIDEBAR ── */}
-      <aside className="fixed left-0 top-16 bottom-0 w-64 flex flex-col py-6 border-r border-[#464554]/10 bg-[#1c1b1b]/40 backdrop-blur-xl z-40">
-        {/* Active Project pill — shows most recent in-progress project */}
+      {/* ── MOBILE SIDEBAR DRAWER ── */}
+      <AnimatePresence>
+        {mobileSidebarOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="mobile-overlay md:hidden"
+              onClick={() => setMobileSidebarOpen(false)}
+            />
+            <motion.aside
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", stiffness: 400, damping: 35 }}
+              className="slide-drawer md:hidden safe-top safe-bottom"
+            >
+              {/* Drawer header */}
+              <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.04]">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.3)]">
+                    <Sparkles className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <span className="text-base font-black tracking-tighter text-gradient-indigo">Velora Studio</span>
+                </div>
+                <button
+                  onClick={() => setMobileSidebarOpen(false)}
+                  className="p-2 rounded-lg hover:bg-white/[0.04] text-white/40 hover:text-white/80 transition-colors"
+                  aria-label="Close navigation menu"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Active project pill (mobile) */}
+              {(() => {
+                const latestActive = projects.find((p) => p.status === "in-progress");
+                if (!latestActive) return null;
+                return (
+                  <div className="px-4 py-4">
+                    <button
+                      onClick={() => { router.push(`/project/${latestActive._id}`); setMobileSidebarOpen(false); }}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all text-left group"
+                    >
+                      <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/20">
+                        <Sparkles className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-white/70 truncate">{latestActive.title}</p>
+                        <p className="text-[10px] text-white/25">Step: {latestActive.currentStep}</p>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })()}
+
+              {/* Nav (mobile) */}
+              <nav className="flex-1 space-y-0.5 px-3 py-2">
+                {NAV_LABELS.map((label) => {
+                  const isActive = activeNav === label;
+                  return (
+                    <button
+                      key={label}
+                      onClick={() => { setActiveNav(label); setMobileSidebarOpen(false); }}
+                      className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl relative transition-all duration-200 ${
+                        isActive
+                          ? "text-white bg-white/[0.04]"
+                          : "text-white/25 hover:bg-white/[0.03] hover:text-white/50"
+                      }`}
+                    >
+                      {isActive && (
+                        <span className="absolute left-0 w-0.5 h-5 bg-indigo-500 rounded-r-full" />
+                      )}
+                      <span className={isActive ? "text-indigo-400" : ""}>{NAV_ICONS[label]}</span>
+                      <span className="text-[13px] font-semibold tracking-wide">{label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+
+              {/* Logout (mobile) */}
+              <div className="px-3 pb-4 mt-auto">
+                <div className="pt-3 border-t border-white/[0.04]">
+                  <button
+                    onClick={() => signOut({ callbackUrl: "/login" })}
+                    className="w-full flex items-center gap-3 px-3.5 py-3 rounded-xl transition-all text-[12px] font-medium text-white/20 hover:text-rose-400/70 hover:bg-white/[0.02]"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ── SIDEBAR (Desktop) ── */}
+      <aside className="fixed left-0 top-14 bottom-0 w-60 flex-col py-6 border-r border-white/[0.04] bg-[#0a0a0a] z-40 hidden md:flex">
+        {/* Active Project pill */}
         {(() => {
           const latestActive = projects.find((p) => p.status === "in-progress");
           if (!latestActive) return null;
           return (
-            <div className="px-6 mb-8">
+            <div className="px-4 mb-6">
               <button
                 onClick={() => router.push(`/project/${latestActive._id}`)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#201f1f] hover:bg-[#2a2a2a] transition-colors text-left"
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.04] transition-all text-left group"
               >
-                <div className="w-10 h-10 bg-[#6f00be] rounded-lg flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-[#ddb7ff]" />
+                <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg flex items-center justify-center flex-shrink-0 shadow-lg shadow-indigo-500/20">
+                  <Sparkles className="w-4 h-4 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-[#c0c1ff] truncate">{latestActive.title}</p>
-                  <p className="text-[10px] text-[#908fa0]">Step: {latestActive.currentStep}</p>
+                  <p className="text-[11px] font-bold text-white/70 truncate group-hover:text-white transition-colors">{latestActive.title}</p>
+                  <p className="text-[10px] text-white/25">Step: {latestActive.currentStep}</p>
                 </div>
               </button>
             </div>
@@ -425,26 +531,32 @@ export default function DashboardPage() {
               <button
                 key={label}
                 onClick={() => setActiveNav(label)}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl relative transition-all group ${
+                className={`w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl relative transition-all duration-200 group ${
                   isActive
-                    ? "text-[#c0c1ff] bg-[#c0c1ff]/5"
-                    : "text-[#e5e2e1]/35 hover:bg-[#c0c1ff]/8 hover:text-[#c0c1ff]"
+                    ? "text-white bg-white/[0.04]"
+                    : "text-white/25 hover:bg-white/[0.03] hover:text-white/50"
                 }`}
               >
-                {isActive && <span className="absolute left-0 w-0.5 h-5 bg-[#c0c1ff] rounded-r-full" />}
-                {NAV_ICONS[label]}
-                <span className="text-xs font-medium uppercase tracking-widest">{label}</span>
+                {isActive && (
+                  <motion.span
+                    layoutId="sidebar-active"
+                    className="absolute left-0 w-0.5 h-5 bg-indigo-500 rounded-r-full"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                  />
+                )}
+                <span className={isActive ? "text-indigo-400" : ""}>{NAV_ICONS[label]}</span>
+                <span className="text-[12px] font-semibold tracking-wide">{label}</span>
               </button>
             );
           })}
         </nav>
 
         {/* Bottom */}
-        <div className="px-4 mt-auto space-y-3">
-          <div className="pt-3 border-t border-[#464554]/10 space-y-0.5">
+        <div className="px-3 mt-auto">
+          <div className="pt-3 border-t border-white/[0.04]">
             <button
               onClick={() => signOut({ callbackUrl: "/login" })}
-              className="w-full flex items-center gap-4 px-2 py-2 rounded-lg transition-all text-[10px] font-medium uppercase tracking-widest text-[#e5e2e1]/35 hover:text-[#ffb4ab]"
+              className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all text-[11px] font-medium text-white/20 hover:text-rose-400/70 hover:bg-white/[0.02]"
             >
               <LogOut className="w-4 h-4" />
               Logout
@@ -454,155 +566,196 @@ export default function DashboardPage() {
       </aside>
 
       {/* ── MAIN ── */}
-      <main className="ml-64 pt-16 p-8 min-h-screen">
+      <main className="md:ml-60 pt-14 p-6 md:p-8 min-h-screen">
         {/* Header */}
-        <header className="mb-10 flex justify-between items-end">
+        <motion.header
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4"
+        >
           <div>
-            <p className="text-[#c0c1ff] font-medium text-sm tracking-wide mb-1">Welcome back, {session?.user?.name?.split(" ")[0] || "Creative"}</p>
-            <h1 className="text-4xl font-black tracking-tighter text-[#e5e2e1]">Your Studio Canvas</h1>
+            <p className="text-indigo-400 font-semibold text-sm tracking-wide mb-1">Welcome back, {session?.user?.name?.split(" ")[0] || "Creative"}</p>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tighter text-white">Your Studio Canvas</h1>
           </div>
-          <div className="bg-[#201f1f] px-4 py-3 rounded-xl border border-[#464554]/10">
-            <p className="text-[10px] text-[#908fa0] uppercase tracking-widest mb-1.5">Compute Usage</p>
+          <div className="bg-white/[0.02] px-4 py-3 rounded-xl border border-white/[0.04]">
+            <p className="text-[10px] text-white/25 uppercase tracking-widest mb-1.5 font-bold">Compute Usage</p>
             <div className="flex items-center gap-3">
-              <div className="w-32 h-1.5 bg-[#353434] rounded-full overflow-hidden">
-                <div className="h-full bg-[#c0c1ff] rounded-full transition-all duration-700" style={{ width: `${storageStats.usedPercent}%` }} />
+              <div className="w-32 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                <motion.div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${storageStats.usedPercent}%` }}
+                  transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                />
               </div>
-              <span className="text-xs font-bold text-[#e5e2e1]">{storageStats.usedPercent}%</span>
+              <span className="text-xs font-bold text-white/60">{storageStats.usedPercent}%</span>
             </div>
           </div>
-        </header>
+        </motion.header>
 
-        <div className="grid grid-cols-12 gap-6">
+        <div className="grid grid-cols-12 gap-5">
 
           {/* ── Quick Actions ── */}
-          <div className="col-span-12 lg:col-span-4 rounded-3xl p-6 border border-[#464554]/10 bg-[#1c1b1b]/60 flex flex-col gap-4">
-            <h2 className="text-lg font-bold tracking-tight">Quick Actions</h2>
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+            className="col-span-12 lg:col-span-4 rounded-2xl p-5 border border-white/[0.04] bg-white/[0.02] flex flex-col gap-4"
+          >
+            <h2 className="text-base font-bold tracking-tight text-white">Quick Actions</h2>
             <div className="grid grid-cols-2 gap-3">
-              {quickActions.map(({ icon, label, color, hover, onClick }) => (
+              {quickActions.map(({ icon, label, color, gradient, onClick }) => (
                 <motion.button
                   key={label}
                   onClick={onClick}
-                  whileHover={{ scale: 1.04, y: -2 }}
+                  whileHover={{ y: -3, transition: { type: "spring", stiffness: 300 } }}
                   whileTap={{ scale: 0.96 }}
-                  className={`flex flex-col items-center justify-center gap-2 p-5 rounded-2xl bg-[#2a2a2a] ${hover} transition-all border border-[#464554]/5 group cursor-pointer`}
+                  className="flex flex-col items-center justify-center gap-2.5 p-4 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] transition-all border border-white/[0.04] hover:border-white/[0.08] group cursor-pointer"
                 >
-                  <span className={`${color} group-hover:scale-110 transition-transform`}>{icon}</span>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#e5e2e1]/60">{label}</span>
+                  <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-300`}>
+                    <span className="text-white">{icon}</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/30 group-hover:text-white/60 transition-colors">{label}</span>
                 </motion.button>
               ))}
             </div>
-          </div>
+          </motion.div>
 
           {/* ── Cloud Storage ── */}
-          <div className="col-span-12 lg:col-span-8 rounded-3xl p-6 border border-[#464554]/10 bg-[#1c1b1b]/60 flex flex-col justify-between overflow-hidden relative">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.4 }}
+            className="col-span-12 lg:col-span-8 rounded-2xl p-5 border border-white/[0.04] bg-white/[0.02] flex flex-col justify-between overflow-hidden relative"
+          >
             <div className="relative z-10">
               <div className="flex items-center justify-between mb-1">
-                <h2 className="text-lg font-bold tracking-tight">Cloud Storage</h2>
-                <span className="text-[9px] font-bold uppercase tracking-widest text-[#c0c1ff] bg-[#c0c1ff]/10 px-2.5 py-1 rounded-full">
-                  {storageStats.totalProjects} projects
-                </span>
+                <h2 className="text-base font-bold tracking-tight text-white">Cloud Storage</h2>
+                <Badge variant="primary" size="sm">{storageStats.totalProjects} projects</Badge>
               </div>
-              <p className="text-sm text-[#908fa0] mb-6">{storageStats.totalUsed} of {storageStats.limit} used</p>
-              <div className="h-3 bg-[#353434] rounded-full overflow-hidden flex mb-4">
-                <div className="h-full bg-[#c0c1ff] rounded-full transition-all duration-700" style={{ width: `${storageStats.video.pct}%` }} />
-                <div className="h-full bg-[#ddb7ff] transition-all duration-700" style={{ width: `${storageStats.assets.pct}%` }} />
-                <div className="h-full bg-[#f751a1] transition-all duration-700" style={{ width: `${storageStats.audio.pct}%` }} />
+              <p className="text-sm text-white/30 mb-5">{storageStats.totalUsed} of {storageStats.limit} used</p>
+              <div className="h-2.5 bg-white/[0.04] rounded-full overflow-hidden flex mb-4">
+                <motion.div
+                  className="h-full bg-indigo-500 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${storageStats.video.pct}%` }}
+                  transition={{ duration: 0.8, delay: 0.3 }}
+                />
+                <motion.div
+                  className="h-full bg-purple-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${storageStats.assets.pct}%` }}
+                  transition={{ duration: 0.8, delay: 0.4 }}
+                />
+                <motion.div
+                  className="h-full bg-pink-500"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${storageStats.audio.pct}%` }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                />
               </div>
-              <div className="flex flex-wrap gap-6">
+              <div className="flex flex-wrap gap-5">
                 {[
-                  { color: "bg-[#c0c1ff]", label: storageStats.video.label },
-                  { color: "bg-[#ddb7ff]", label: storageStats.assets.label },
-                  { color: "bg-[#f751a1]", label: storageStats.audio.label },
+                  { color: "bg-indigo-500", label: storageStats.video.label },
+                  { color: "bg-purple-500", label: storageStats.assets.label },
+                  { color: "bg-pink-500", label: storageStats.audio.label },
                 ].map(({ color, label }) => (
                   <div key={label} className="flex items-center gap-2">
                     <span className={`w-2 h-2 rounded-full ${color}`} />
-                    <span className="text-[10px] uppercase font-bold tracking-widest text-[#e5e2e1]/50">{label}</span>
+                    <span className="text-[10px] uppercase font-bold tracking-widest text-white/30">{label}</span>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-[#c0c1ff]/8 blur-[100px] rounded-full" />
-          </div>
+            <div className="absolute -right-20 -bottom-20 w-64 h-64 bg-indigo-500/[0.05] blur-[100px] rounded-full pointer-events-none" />
+          </motion.div>
 
           {/* ── Recent Projects ── */}
           <div className="col-span-12">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-black tracking-tight">
+            <div className="flex justify-between items-center mb-5">
+              <h2 className="text-xl font-black tracking-tight text-white">
                 {activeNav === "Dashboard" ? "Recent Creations" : `${activeNav} Projects`}
-                {searchQuery && <span className="text-sm font-normal text-[#908fa0] ml-3">matching "{searchQuery}"</span>}
+                {searchQuery && <span className="text-sm font-normal text-white/25 ml-3">matching &ldquo;{searchQuery}&rdquo;</span>}
               </h2>
               <button
                 onClick={() => { setActiveNav("Dashboard"); setSearchQuery(""); }}
-                className="text-[#c0c1ff] text-xs font-bold uppercase tracking-widest hover:underline flex items-center gap-1 transition-all"
+                className="text-indigo-400 text-xs font-bold hover:text-indigo-300 flex items-center gap-1 transition-colors"
               >
                 {activeNav !== "Dashboard" || searchQuery ? "Show All" : `${projects.length} total`} <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
               {isLoading ? (
                 [...Array(3)].map((_, i) => (
-                  <div key={i} className="h-[300px] bg-[#201f1f] rounded-3xl animate-pulse border border-[#464554]/10" />
+                  <SkeletonCard key={i} />
                 ))
               ) : filteredProjects.length === 0 && (projects.length > 0) ? (
                 <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
-                  <Search className="w-10 h-10 text-[#908fa0]/30 mb-4" />
-                  <p className="text-sm font-bold text-[#908fa0]">No projects found</p>
-                  <p className="text-xs text-[#908fa0]/60 mt-1">
+                  <Search className="w-10 h-10 text-white/10 mb-4" />
+                  <p className="text-sm font-bold text-white/30">No projects found</p>
+                  <p className="text-xs text-white/15 mt-1">
                     {searchQuery ? `No results for "${searchQuery}"` : `No projects match the ${activeNav} filter`}
                   </p>
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery("")} className="mt-3 text-xs font-bold text-[#c0c1ff] hover:underline">Clear search</button>
+                    <button onClick={() => setSearchQuery("")} className="mt-3 text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors">Clear search</button>
                   )}
                 </div>
               ) : (
-                filteredProjects.map((project) => {
+                filteredProjects.map((project, i) => {
                   const statusColor = project.status === "completed" 
-                    ? "bg-[#6f00be]/80 text-[#d6a9ff]" 
-                    : "bg-[#2a2a2a]/80 text-[#908fa0]";
+                    ? "success" as const
+                    : "default" as const;
                   const statusLabel = project.status === "completed" ? "COMPLETED" : "EDITING";
                   
                   return (
                     <motion.div
                       key={project._id}
+                      initial={{ opacity: 0, y: 16 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * i, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                       onClick={() => router.push(`/project/${project._id}`)}
-                      whileHover={{ boxShadow: "0 0 0 1.5px rgba(192,193,255,0.35)", y: -4 }}
-                      transition={{ duration: 0.2 }}
-                      style={{ border: "1px solid rgba(70,69,84,0.10)" }}
-                      className="group bg-[#201f1f] rounded-3xl overflow-hidden cursor-pointer relative"
+                      whileHover={{ y: -4, transition: { type: "spring", stiffness: 300, damping: 20 } }}
+                      className="group bg-white/[0.02] rounded-2xl overflow-hidden cursor-pointer relative border border-white/[0.04] hover:border-white/[0.1] transition-all"
                     >
                       {/* Thumbnail */}
-                      <div className="relative h-44 overflow-hidden bg-[#1c1b1b]">
+                      <div className="relative h-40 overflow-hidden bg-[#0a0a0a]">
                         <img
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-50"
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-40 group-hover:opacity-60"
                           src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&q=80"
                           alt={project.title}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#201f1f] to-transparent" />
-                        <div className={`absolute top-3 right-3 ${statusColor} backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2`}>
-                          {project.status === "in-progress" && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#c0c1ff] animate-pulse" />
-                          )}
-                          <span className="text-[10px] font-bold uppercase tracking-widest">{statusLabel}</span>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent" />
+                        <div className="absolute top-3 right-3">
+                          <Badge
+                            variant={statusColor}
+                            dot={project.status === "in-progress"}
+                            pulse={project.status === "in-progress"}
+                            size="sm"
+                          >
+                            {statusLabel}
+                          </Badge>
                         </div>
                       </div>
 
                       {/* Info */}
-                      <div className="p-5">
-                        <h3 className="text-[#e5e2e1] font-bold mb-1 truncate">{project.title}</h3>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-[#908fa0] mb-4">Step: {project.currentStep}</p>
+                      <div className="p-4">
+                        <h3 className="text-white font-bold mb-1 truncate text-sm group-hover:text-indigo-200 transition-colors">{project.title}</h3>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-white/20 mb-3">Step: {project.currentStep}</p>
                         <div className="flex items-center justify-between">
                           <div className="flex -space-x-2">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#6366f1] to-[#a855f7] border-2 border-[#201f1f]" />
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 border-2 border-[#0d0d0d]" />
                           </div>
-                          {/* Three-dot menu — stop propagation so card click doesn't fire */}
+                          {/* Three-dot menu */}
                           <button
                             data-menu-trigger
                             onClick={(e) => {
                               e.stopPropagation();
                               setMenuOpenId(menuOpenId === project._id ? null : project._id);
                             }}
-                            className="text-[#908fa0] hover:text-[#c0c1ff] transition-colors p-1 rounded-lg hover:bg-white/10 relative z-[1]"
+                            className="text-white/15 hover:text-white/50 transition-colors p-1 rounded-lg hover:bg-white/[0.06] relative z-[1]"
+                            aria-label="Project actions"
                           >
                             <MoreVertical className="w-4 h-4" />
                           </button>
@@ -618,34 +771,29 @@ export default function DashboardPage() {
                             animate={{ opacity: 1, scale: 1, y: 0 }}
                             exit={{ opacity: 0, scale: 0.95, y: 4 }}
                             transition={{ duration: 0.12 }}
-                            className="absolute bottom-12 right-4 bg-[#1c1b1b] border border-[#464554]/20 rounded-xl shadow-2xl min-w-[160px] overflow-hidden"
+                            className="absolute bottom-12 right-4 bg-[#0d0d0d] border border-white/[0.08] rounded-xl shadow-2xl min-w-[160px] overflow-hidden"
                             style={{ zIndex: 9999 }}
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <button
-                              onClick={() => { router.push(`/project/${project._id}`); setMenuOpenId(null); }}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-[#e5e2e1]/60 hover:text-[#c0c1ff] hover:bg-white/5 transition-all"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" /> Open
-                            </button>
-                            <button
-                              onClick={() => handleDuplicate(project._id)}
-                              disabled={actionLoading === project._id}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-[#e5e2e1]/60 hover:text-[#c0c1ff] hover:bg-white/5 transition-all disabled:opacity-40"
-                            >
-                              <Copy className="w-3.5 h-3.5" /> Duplicate
-                            </button>
-                            <button
-                              onClick={() => handleRenameStart(project)}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-[#e5e2e1]/60 hover:text-[#c0c1ff] hover:bg-white/5 transition-all"
-                            >
-                              <Pencil className="w-3.5 h-3.5" /> Rename
-                            </button>
-                            <div className="border-t border-[#464554]/10" />
+                            {[
+                              { label: "Open", icon: ExternalLink, onClick: () => { router.push(`/project/${project._id}`); setMenuOpenId(null); } },
+                              { label: "Duplicate", icon: Copy, onClick: () => handleDuplicate(project._id), disabled: actionLoading === project._id },
+                              { label: "Rename", icon: Pencil, onClick: () => handleRenameStart(project) },
+                            ].map((action) => (
+                              <button
+                                key={action.label}
+                                onClick={action.onClick}
+                                disabled={action.disabled}
+                                className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-white/40 hover:text-white hover:bg-white/[0.03] transition-all disabled:opacity-30"
+                              >
+                                <action.icon className="w-3.5 h-3.5" /> {action.label}
+                              </button>
+                            ))}
+                            <div className="border-t border-white/[0.04]" />
                             <button
                               onClick={() => handleDelete(project._id)}
                               disabled={actionLoading === project._id}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-semibold uppercase tracking-widest text-rose-400/70 hover:text-rose-400 hover:bg-rose-500/5 transition-all disabled:opacity-40"
+                              className="w-full flex items-center gap-3 px-4 py-2.5 text-xs font-medium text-rose-400/50 hover:text-rose-400 hover:bg-rose-500/[0.04] transition-all disabled:opacity-30"
                             >
                               <Trash2 className="w-3.5 h-3.5" /> Delete
                             </button>
@@ -658,18 +806,24 @@ export default function DashboardPage() {
               )}
 
               {/* New Project Card */}
-              <motion.div
-                onClick={openCreate}
-                whileHover={{ boxShadow: "0 0 0 2px rgba(192,193,255,0.35)", y: -4 }}
-                transition={{ duration: 0.2 }}
-                style={{ border: "2px dashed rgba(70,69,84,0.20)" }}
-                className="group bg-[#0e0e0e] rounded-3xl transition-all flex flex-col items-center justify-center min-h-[300px] cursor-pointer"
-              >
-                <div className="w-14 h-14 rounded-full bg-[#201f1f] flex items-center justify-center mb-4 group-hover:bg-[#8083ff]/20 transition-all duration-300">
-                  <Plus className="w-6 h-6 text-[#c0c1ff]" />
-                </div>
-                <p className="text-sm font-bold text-[#908fa0] group-hover:text-[#c0c1ff] transition-colors">Start New Video</p>
-              </motion.div>
+              {!isLoading && (
+                <motion.div
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * filteredProjects.length + 0.1, duration: 0.4 }}
+                  onClick={openCreate}
+                  whileHover={{ y: -4, borderColor: "rgba(99,102,241,0.2)", transition: { type: "spring", stiffness: 300 } }}
+                  className="group bg-transparent rounded-2xl transition-all flex flex-col items-center justify-center min-h-[280px] cursor-pointer border-2 border-dashed border-white/[0.06] hover:bg-white/[0.01]"
+                >
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    className="w-12 h-12 rounded-full bg-white/[0.03] flex items-center justify-center mb-3 group-hover:bg-indigo-500/10 transition-all duration-300"
+                  >
+                    <Plus className="w-5 h-5 text-white/20 group-hover:text-indigo-400 transition-colors" />
+                  </motion.div>
+                  <p className="text-sm font-bold text-white/20 group-hover:text-indigo-400 transition-colors">Start New Video</p>
+                </motion.div>
+              )}
             </div>
           </div>
         </div>
@@ -689,42 +843,36 @@ export default function DashboardPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
             onClick={() => setRenameTarget(null)}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              transition={{ duration: 0.15 }}
-              className="bg-[#1c1b1b] border border-[#464554]/20 rounded-2xl shadow-2xl w-full max-w-md p-6"
+              transition={{ type: "spring", stiffness: 300, damping: 25 }}
+              className="bg-[#0d0d0d] border border-white/[0.06] rounded-2xl shadow-2xl w-full max-w-md p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-bold text-[#e5e2e1] mb-1">Rename Project</h3>
-              <p className="text-xs text-[#908fa0] mb-4">Enter a new name for your project.</p>
+              <h3 className="text-lg font-bold text-white mb-1">Rename Project</h3>
+              <p className="text-xs text-white/25 mb-4">Enter a new name for your project.</p>
               <input
                 autoFocus
                 value={renameValue}
                 onChange={(e) => setRenameValue(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleRenameSubmit()}
-                className="w-full bg-[#0e0e0e] border border-[#464554]/20 rounded-xl px-4 py-3 text-sm text-[#e5e2e1] placeholder:text-[#908fa0]/50 outline-none focus:border-[#c0c1ff]/40 transition-colors"
+                className="w-full bg-white/[0.03] border border-white/[0.06] rounded-xl px-4 py-3 text-sm text-white placeholder:text-white/15 outline-none focus:border-indigo-500/40 focus:ring-2 focus:ring-indigo-500/15 transition-all font-medium"
                 placeholder="Project title..."
               />
               <div className="flex justify-end gap-3 mt-5">
-                <button
-                  onClick={() => setRenameTarget(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-widest text-[#908fa0] hover:text-[#e5e2e1] hover:bg-white/5 transition-all"
-                >
-                  Cancel
-                </button>
-                <button
+                <Button variant="ghost" onClick={() => setRenameTarget(null)}>Cancel</Button>
+                <Button
                   onClick={handleRenameSubmit}
                   disabled={!renameValue.trim() || renameValue.trim() === renameTarget.title || actionLoading === renameTarget.id}
-                  className="px-5 py-2 rounded-xl bg-[#8083ff] text-[#07006c] text-xs font-bold uppercase tracking-widest disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#9395ff] transition-all flex items-center gap-2"
+                  loading={actionLoading === renameTarget.id}
                 >
-                  {actionLoading === renameTarget.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Save
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>

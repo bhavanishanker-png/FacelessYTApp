@@ -221,17 +221,14 @@ export const HookStepPanel = ({
       </AnimatePresence>
 
       {/* ── Generate Button ── */}
-      <motion.button
+      <button
         onClick={handleGenerate}
         disabled={isGenerating}
-        whileHover={!isGenerating ? { scale: 1.01 } : {}}
-        whileTap={!isGenerating ? { scale: 0.99 } : {}}
-        transition={{ type: "spring", stiffness: 400, damping: 25 }}
         className={cn(
-          "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-8 shadow-lg",
+          "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-8 h-[52px]",
           isGenerating 
-            ? "bg-white/[0.05] border border-white/[0.1] text-white/40 cursor-not-allowed"
-            : "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-amber-500/15 hover:shadow-amber-500/25"
+            ? "bg-white/[0.05] border border-white/[0.1] text-white/40 cursor-not-allowed hover:shadow-none hover:translate-y-0"
+            : "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.3)] hover:-translate-y-0.5 active:translate-y-0"
         )}
       >
         {isGenerating ? (
@@ -244,7 +241,7 @@ export const HookStepPanel = ({
             {hooks.length > 0 ? "Regenerate Hooks" : "Generate Hooks"}
           </>
         )}
-      </motion.button>
+      </button>
 
       {/* ── Loading Skeleton ── */}
       <AnimatePresence>
@@ -391,7 +388,7 @@ export const HookStepPanel = ({
                 value={editedHook}
                 onChange={(e) => setEditedHook(e.target.value)}
                 rows={3}
-                className="w-full bg-white/[0.03] border border-white/8 rounded-xl px-5 py-4 text-white text-[15px] placeholder:text-white/15 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all duration-200 font-medium resize-none hide-scrollbar"
+                className="w-full bg-white/[0.03] border border-white/10 rounded-xl px-5 py-4 text-white text-[15px] placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/30 transition-all duration-200 font-medium resize-none hide-scrollbar"
                 placeholder="Refine your hook here..."
               />
             </div>
@@ -408,22 +405,19 @@ export const HookStepPanel = ({
             transition={{ delay: 0.2, type: "spring", stiffness: 300, damping: 30 }}
             className="pt-6 mt-4 border-t border-white/[0.04] flex justify-between items-center"
           >
-            <p className="text-[12px] text-white/20 font-medium">
+            <p className="text-[12px] text-white/30 font-medium">
               {selectedIndex !== null
                 ? "You can edit the hook before approving"
                 : "Select a hook to continue"}
             </p>
 
-            <motion.button
+            <button
               onClick={handleApprove}
               disabled={!hasApproval || isApproving || selectedIndex === null}
-              whileHover={hasApproval && !isApproving && selectedIndex !== null ? { scale: 1.02 } : {}}
-              whileTap={hasApproval && !isApproving && selectedIndex !== null ? { scale: 0.98 } : {}}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
               className={cn(
                 "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
                 hasApproval && !isApproving && selectedIndex !== null
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/15 hover:shadow-amber-500/25"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:shadow-[0_0_25px_rgba(245,158,11,0.3)] hover:-translate-y-0.5 active:translate-y-0"
                   : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
               )}
             >
@@ -437,7 +431,7 @@ export const HookStepPanel = ({
                   <ChevronRight className="w-4 h-4" />
                 </>
               )}
-            </motion.button>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

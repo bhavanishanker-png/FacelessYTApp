@@ -240,14 +240,12 @@ export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, init
             </div>
 
             <div className="flex justify-end">
-              <motion.button
+              <button
                 onClick={startRender}
-                whileHover={{ scale: 1.03, boxShadow: "0 0 30px rgba(99,102,241,0.4)" }}
-                whileTap={{ scale: 0.97 }}
-                className="px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-black text-base shadow-lg"
+                className="px-8 py-4 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-black text-base shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
               >
                 Start Rendering
-              </motion.button>
+              </button>
             </div>
           </motion.div>
         )}
@@ -415,17 +413,15 @@ export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, init
 
               <div className="flex gap-4 w-full max-w-2xl pt-2">
                 {videoUrl && (
-                  <motion.a
+                  <a
                     href={videoUrl}
                     download={`project_${projectId}.mp4`}
                     target="_blank"
                     rel="noreferrer"
-                    whileHover={{ scale: 1.02, boxShadow: "0 0 20px rgba(16,185,129,0.2)" }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-emerald-500 text-white font-bold text-lg shadow-lg"
+                    className="flex-1 flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-bold text-lg shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_25px_rgba(16,185,129,0.3)] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
                   >
                     <Download className="w-5 h-5" /> Download Video
-                  </motion.a>
+                  </a>
                 )}
                 <button 
                   onClick={() => {

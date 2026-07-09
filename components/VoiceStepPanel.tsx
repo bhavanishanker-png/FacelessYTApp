@@ -473,18 +473,15 @@ export const VoiceStepPanel = ({
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
             >
-              <motion.button
+              <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
-                  "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6",
+                  "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6 h-[52px]",
                   selectedVoice
-                    ? `bg-gradient-to-r ${selectedVoice.color.gradient} text-white shadow-lg ${selectedVoice.color.glow}`
-                    : "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-lg shadow-pink-500/15",
-                  isGenerating && "opacity-60 cursor-not-allowed saturate-50"
+                    ? `bg-gradient-to-r ${selectedVoice.color.gradient} text-white shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:shadow-[0_0_25px_rgba(236,72,153,0.3)] hover:-translate-y-0.5 active:translate-y-0`
+                    : "bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:shadow-[0_0_25px_rgba(236,72,153,0.3)] hover:-translate-y-0.5 active:translate-y-0",
+                  isGenerating && "opacity-50 cursor-not-allowed hover:shadow-none hover:translate-y-0"
                 )}
               >
                 {isGenerating ? (
@@ -498,7 +495,7 @@ export const VoiceStepPanel = ({
                     Generate Voiceover
                   </>
                 )}
-              </motion.button>
+              </button>
             </motion.div>
           )}
         </AnimatePresence>
@@ -581,7 +578,7 @@ export const VoiceStepPanel = ({
       {/* ── Action Footer ── */}
       <div className="pt-5 mt-2 border-t border-white/[0.04] flex justify-end items-center">
 
-        <motion.button
+        <button
           onClick={async () => {
             if (hasGenerated && !isGenerating && !isApproving) {
               setIsApproving(true);
@@ -590,13 +587,10 @@ export const VoiceStepPanel = ({
             }
           }}
           disabled={!hasGenerated || isGenerating || isApproving}
-          whileHover={hasGenerated && !isGenerating && !isApproving ? { scale: 1.02 } : {}}
-          whileTap={hasGenerated && !isGenerating && !isApproving ? { scale: 0.98 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
             "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
             hasGenerated && !isGenerating && !isApproving
-              ? `bg-gradient-to-r ${selectedVoice ? selectedVoice.color.gradient : "from-pink-500 to-rose-500"} text-white shadow-lg ${selectedVoice ? selectedVoice.color.glow : "shadow-pink-500/15"} hover:shadow-pink-500/25`
+              ? `bg-gradient-to-r ${selectedVoice ? selectedVoice.color.gradient : "from-pink-500 to-rose-500"} text-white shadow-[0_0_20px_rgba(236,72,153,0.2)] hover:shadow-[0_0_25px_rgba(236,72,153,0.3)] hover:-translate-y-0.5 active:translate-y-0`
               : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
           )}
         >
@@ -610,7 +604,7 @@ export const VoiceStepPanel = ({
               <ChevronRight className="w-4 h-4" />
             </>
           )}
-        </motion.button>
+        </button>
       </div>
     </div>
   );

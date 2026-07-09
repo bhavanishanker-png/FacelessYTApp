@@ -187,16 +187,14 @@ export const ScenesStepPanel = ({
 
       {/* ── Generate Button (before first generation) ── */}
       {!hasGenerated && (
-        <motion.button
+        <button
           onClick={handleGenerate}
           disabled={isGenerating || !scriptPreview}
-          whileHover={!isGenerating && scriptPreview ? { scale: 1.02 } : {}}
-          whileTap={!isGenerating && scriptPreview ? { scale: 0.98 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
-            "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6",
-            "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/15",
-            (isGenerating || !scriptPreview) && "opacity-60 cursor-not-allowed saturate-50"
+            "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-6 h-[52px]",
+            (isGenerating || !scriptPreview) 
+              ? "bg-white/[0.05] border border-white/[0.1] text-white/40 cursor-not-allowed hover:shadow-none hover:translate-y-0"
+              : "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:-translate-y-0.5 active:translate-y-0"
           )}
         >
           {isGenerating ? (
@@ -210,7 +208,7 @@ export const ScenesStepPanel = ({
               Generate Scenes
             </>
           )}
-        </motion.button>
+        </button>
       )}
 
       {/* ── Empty State ── */}
@@ -263,10 +261,10 @@ export const ScenesStepPanel = ({
             </div>
 
             {/* Split panel */}
-            <div className="flex-1 flex gap-5 min-h-0">
+            <div className="flex-1 flex flex-col md:flex-row gap-5 min-h-0">
 
               {/* LEFT — Scene List */}
-              <div className="w-[280px] shrink-0 flex flex-col gap-2.5 overflow-y-auto hide-scrollbar pr-1">
+              <div className="w-full md:w-[280px] shrink-0 flex flex-col gap-2.5 overflow-y-auto hide-scrollbar pr-1 max-h-[40vh] md:max-h-none">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={scenes.length}
@@ -452,17 +450,15 @@ export const ScenesStepPanel = ({
               transition={{ delay: 0.25, type: "spring", stiffness: 300, damping: 30 }}
               className="pt-5 mt-4 border-t border-white/[0.04] flex justify-between items-center"
             >
-              <motion.button
+              <button
                 onClick={handleGenerate}
                 disabled={isGenerating || isApproving}
-                whileHover={!isGenerating && !isApproving ? { scale: 1.02 } : {}}
-                whileTap={!isGenerating && !isApproving ? { scale: 0.98 } : {}}
-                className="px-4 py-2.5 rounded-lg text-[12px] font-bold tracking-wide flex items-center gap-2 text-white/50 hover:text-white/90 hover:bg-white/[0.03] transition-all"
+                className="px-4 py-2.5 rounded-lg text-[12px] font-bold tracking-wide flex items-center gap-2 text-white/50 hover:text-white/90 hover:bg-white/[0.03] transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 <RefreshCcw className="w-3.5 h-3.5" />
                 Regenerate All
-              </motion.button>
-              <motion.button
+              </button>
+              <button
                 onClick={async () => {
                   if (scenes.length > 0 && !isGenerating && !isApproving) {
                     setIsApproving(true);
@@ -471,13 +467,10 @@ export const ScenesStepPanel = ({
                   }
                 }}
                 disabled={scenes.length === 0 || isGenerating || isApproving}
-                whileHover={scenes.length > 0 && !isApproving ? { scale: 1.02 } : {}}
-                whileTap={scenes.length > 0 && !isApproving ? { scale: 0.98 } : {}}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                   "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
                   scenes.length > 0 && !isGenerating && !isApproving
-                    ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/15 hover:shadow-cyan-500/25"
+                    ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.2)] hover:shadow-[0_0_25px_rgba(6,182,212,0.3)] hover:-translate-y-0.5 active:translate-y-0"
                     : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
                 )}
               >
@@ -491,7 +484,7 @@ export const ScenesStepPanel = ({
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
-              </motion.button>
+              </button>
             </motion.div>
           </motion.div>
         )}

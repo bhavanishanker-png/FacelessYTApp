@@ -313,22 +313,21 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
       />
 
       <main className="flex-1 flex flex-col overflow-hidden relative z-0">
-        {/* Ambient glows */}
-        <div className="absolute top-[-15%] left-[5%] w-[45%] h-[45%] bg-indigo-600/[0.05] blur-[160px] rounded-full mix-blend-screen pointer-events-none -z-10" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[35%] h-[35%] bg-purple-600/[0.04] blur-[140px] rounded-full mix-blend-screen pointer-events-none -z-10" />
+        <div className="absolute top-[-15%] left-[5%] w-[45%] h-[45%] bg-indigo-500/[0.05] blur-[160px] rounded-full mix-blend-screen pointer-events-none -z-10" />
+        <div className="absolute bottom-[-10%] right-[-5%] w-[35%] h-[35%] bg-purple-500/[0.04] blur-[140px] rounded-full mix-blend-screen pointer-events-none -z-10" />
 
         {/* Header */}
-        <header className="px-8 pt-8 pb-5 border-b border-white/[0.03] shrink-0 flex items-center justify-between">
+        <header className="px-4 sm:px-6 md:px-8 pt-5 md:pt-8 pb-4 md:pb-5 border-b border-white/[0.03] shrink-0 flex items-center justify-between z-10 glass-frosted bg-[#030303]/40">
           <div>
             <div className="flex items-center gap-3 mb-1.5">
               <span className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-[0.12em] bg-white/[0.04] text-white/30 border border-white/[0.06]">
                 {project.type || "LONG"}
               </span>
-              <span className="text-white/[0.1] text-[10px] tracking-[0.12em] font-mono truncate max-w-[200px]">
+              <span className="text-white/[0.15] text-[10px] tracking-[0.12em] font-mono truncate max-w-[200px]">
                 {project._id}
               </span>
             </div>
-            <h1 className="text-2xl font-extrabold tracking-tight text-white/90 truncate">
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white/90 truncate max-w-[60vw] sm:max-w-none">
               {project.title}
             </h1>
           </div>
@@ -343,10 +342,10 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.03] border border-white/[0.05]"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20"
                 >
                   <div className="w-3 h-3 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-                  <span className="text-[11px] font-bold text-white/40 tracking-wider uppercase">Saving...</span>
+                  <span className="text-[10px] font-bold text-indigo-400 tracking-wider uppercase">Saving...</span>
                 </motion.div>
               )}
               {saveStatus === "saved" && (
@@ -356,12 +355,12 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-500/10 border border-emerald-500/20"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20"
                 >
                   <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
-                  <span className="text-[11px] font-bold text-emerald-500/90 tracking-wider uppercase">Saved</span>
+                  <span className="text-[10px] font-bold text-emerald-500/90 tracking-wider uppercase">Saved</span>
                 </motion.div>
               )}
               {saveStatus === "error" && (
@@ -371,12 +370,12 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-rose-500/10 border border-rose-500/20 max-w-xs"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-rose-500/10 border border-rose-500/20 max-w-xs"
                 >
                   <svg className="w-3 h-3 text-rose-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  <span className="text-[11px] font-bold text-rose-400/90 tracking-wide truncate">
+                  <span className="text-[10px] font-bold text-rose-400/90 tracking-wide truncate">
                     {saveError || "Save failed"}
                   </span>
                 </motion.div>
@@ -386,14 +385,14 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
         </header>
 
         {/* Content */}
-        <div className="flex-1 p-6 overflow-y-auto hide-scrollbar">
+        <div className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto hide-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={viewingStep}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.18, ease: "easeOut" }}
+              initial={{ opacity: 0, y: 15, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -15, scale: 0.98 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               className="h-full"
             >
               {renderStep()}

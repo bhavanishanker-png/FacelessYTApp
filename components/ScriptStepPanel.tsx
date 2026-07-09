@@ -193,16 +193,14 @@ export const ScriptStepPanel = ({
 
       {/* ── Generate Button (shown before first generation) ── */}
       {!hasGenerated && (
-        <motion.button
+        <button
           onClick={handleGenerate}
           disabled={isGenerating || !selectedIdea || !selectedHook}
-          whileHover={!isGenerating && selectedIdea && selectedHook ? { scale: 1.02 } : {}}
-          whileTap={!isGenerating && selectedIdea && selectedHook ? { scale: 0.98 } : {}}
-          transition={{ type: "spring", stiffness: 400, damping: 25 }}
           className={cn(
-            "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-8",
-            "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/15",
-            (isGenerating || !selectedIdea || !selectedHook) && "opacity-60 cursor-not-allowed saturate-50"
+            "w-full py-4 rounded-xl font-bold text-[13px] tracking-wide flex items-center justify-center gap-2.5 transition-all mb-8 h-[52px]",
+            (isGenerating || !selectedIdea || !selectedHook) 
+              ? "bg-white/[0.05] border border-white/[0.1] text-white/40 cursor-not-allowed hover:shadow-none hover:translate-y-0"
+              : "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.2)] hover:shadow-[0_0_25px_rgba(139,92,246,0.3)] hover:-translate-y-0.5 active:translate-y-0"
           )}
         >
           {isGenerating ? (
@@ -216,7 +214,7 @@ export const ScriptStepPanel = ({
               Generate Script
             </>
           )}
-        </motion.button>
+        </button>
       )}
 
       {/* ── Empty State ── */}
@@ -302,7 +300,7 @@ export const ScriptStepPanel = ({
               className="pt-5 mt-2 border-t border-white/[0.04] flex justify-end items-center"
             >
 
-              <motion.button
+              <button
                 onClick={async () => {
                   if (script.trim() && !isGenerating && !isApproving) {
                     setIsApproving(true);
@@ -311,13 +309,10 @@ export const ScriptStepPanel = ({
                   }
                 }}
                 disabled={!script.trim() || isGenerating || isApproving}
-                whileHover={script.trim() && !isGenerating && !isApproving ? { scale: 1.02 } : {}}
-                whileTap={script.trim() && !isGenerating && !isApproving ? { scale: 0.98 } : {}}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 className={cn(
                   "px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide flex items-center gap-2 transition-all duration-200",
                   script.trim() && !isGenerating && !isApproving
-                    ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/15 hover:shadow-violet-500/25"
+                    ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-[0_0_20px_rgba(139,92,246,0.2)] hover:shadow-[0_0_25px_rgba(139,92,246,0.3)] hover:-translate-y-0.5 active:translate-y-0"
                     : "bg-white/[0.03] text-white/15 cursor-not-allowed border border-white/[0.04]"
                 )}
               >
@@ -331,7 +326,7 @@ export const ScriptStepPanel = ({
                     <ChevronRight className="w-4 h-4" />
                   </>
                 )}
-              </motion.button>
+              </button>
             </motion.div>
           </motion.div>
         )}
