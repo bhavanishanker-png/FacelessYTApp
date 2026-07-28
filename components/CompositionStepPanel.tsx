@@ -1,159 +1,220 @@
 "use client";
-import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Layers, Mic, Type, ChevronRight, XCircle, Zap } from "lucide-react";
+import { CheckCircle2, XCircle, AlertCircle, ChevronRight, Layers } from "lucide-react";
 
 interface Props {
   projectTitle: string;
-  previewImageUrl?: string;
+  voice: { audioUrl?: string; durationSeconds?: number };
+  images: { sceneId: string; imageUrl: string; status: string }[];
+  subtitles: { text: string; start: number; end: number }[];
+  scenes: { text: string; duration: number }[];
   onApprove: () => void;
 }
 
-const STEPS_LIST = [
-  { label: "Combining scenes", status: "done" },
-  { label: "Audio sync & alignment", status: "done" },
-  { label: "Color grading", status: "active" },
-  { label: "Final encoding", status: "pending" },
-];
+interface AssetCheck {
+  label: string;
+  description: string;
+  status: "ok" | "warn" | "missing";
+  detail: string;
+}
 
-export const CompositionStepPanel = ({ projectTitle, previewImageUrl, onApprove }: Props) => {
-  const [progress, setProgress] = useState(84);
-  const [assetSync, setAssetSync] = useState({ audio: 100, lipSync: 92, colorGrading: 0 });
+export const CompositionStepPanel = ({
+  projectTitle,
+  voice,
+  images,
+  subtitles,
+  scenes,
+  onApprove,
+}: Props) => {
+  const successImages = images.filter((img) => img.imageUrl && img.status === "success");
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setProgress((p) => Math.min(p + 0.3, 100));
-    }, 400);
-    return () => clearInterval(timer);
-  }, []);
+  const checks: AssetCheck[] = [
+    {
+      label: "Audio Track",
+      description: "Narration audio generated and ready",
+      status: voice?.audioUrl ? "ok" : "missing",
+      detail: voice?.audioUrl
+        ? `${voice.durationSeconds ? `${Math.round(voice.durationSeconds)}s` : "Ready"}`
+        : "Not generated — complete the Voice step",
+    },
+    {
+      label: "Scene Images",
+      description: "Images generated for all scenes",
+      status:
+        successImages.length === 0
+          ? "missing"
+          : successImages.length < scenes.length
+          ? "warn"
+          : "ok",
+      detail:
+        successImages.length === 0
+          ? "Not generated — complete the Scenes step"
+          : `${successImages.length} of ${scenes.length} scenes ready`,
+    },
+    {
+      label: "Subtitles",
+      description: "Subtitle segments synced to audio",
+      status: subtitles.length > 0 ? "ok" : "warn",
+      detail:
+        subtitles.length > 0
+          ? `${subtitles.length} segments`
+          : "No subtitles — video will render without captions",
+    },
+    {
+      label: "Scene Timeline",
+      description: "Scene order and durations defined",
+      status: scenes.length > 0 ? "ok" : "missing",
+      detail:
+        scenes.length > 0
+          ? `${scenes.length} scenes`
+          : "Not defined — complete the Scenes step",
+    },
+  ];
+
+  const criticalMissing = checks.some((c) => c.status === "missing");
+  const previewImage = successImages[0]?.imageUrl;
+
+  const iconFor = (status: AssetCheck["status"]) => {
+    if (status === "ok") return <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />;
+    if (status === "warn") return <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />;
+    return <XCircle className="w-5 h-5 text-rose-400 shrink-0" />;
+  };
 
   return (
     <div className="flex flex-col h-full gap-5">
-      {/* Header status pill */}
       <div className="flex items-center gap-2">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Processing Composition</span>
-        </div>
+        <span className="px-2.5 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-bold uppercase tracking-widest text-indigo-400">
+          Step 9 — Composition
+        </span>
       </div>
-
-      {/* Main render card */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 rounded-2xl bg-[#0d0d0d] border border-white/[0.06] space-y-5"
-      >
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl font-black tracking-tight text-white truncate max-w-sm">
-              {projectTitle.replace(/\s+/g, "_")}_v4
-            </h2>
-            <p className="text-sm text-white/40 mt-1">
-              Finalizing neural render and temporal upscaling. Estimated completion in 02:45.
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[10px] uppercase tracking-widest text-white/25 mb-1">Current Progress</p>
-            <div className="flex items-end gap-1">
-              <span className="text-4xl font-black text-white">{Math.round(progress)}</span>
-              <span className="text-xl font-bold text-white/40 mb-1">%</span>
-            </div>
-            <p className="text-[10px] text-white/25 mt-1 uppercase tracking-widest">Final Resolution · <span className="text-white/50">4K HDR</span></p>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="relative h-2 bg-white/[0.05] rounded-full overflow-hidden">
-          <motion.div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
-            animate={{ width: `${progress}%` }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-          />
-        </div>
-
-        {/* Step indicators */}
-        <div className="flex items-center gap-6">
-          {STEPS_LIST.map((step, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${
-                step.status === "done" ? "bg-emerald-400"
-                : step.status === "active" ? "bg-amber-400 animate-pulse"
-                : "bg-white/15"
-              }`} />
-              <span className={`text-[10px] font-medium uppercase tracking-widest ${
-                step.status === "done" ? "text-emerald-400/70"
-                : step.status === "active" ? "text-amber-400/70"
-                : "text-white/20"
-              }`}>
-                {step.status === "done" ? "✓" : step.status === "active" ? "⏳" : "⚪"} {step.label}
-              </span>
-            </div>
-          ))}
-        </div>
-      </motion.div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5 min-h-0">
-        {/* Preview */}
-        <div className="relative rounded-2xl overflow-hidden bg-[#080808] border border-white/[0.06] min-h-[250px]">
-          <img
-            src={previewImageUrl || "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=800&q=80"}
-            alt="Composition preview"
-            className="w-full h-full object-cover opacity-60"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-        </div>
-
-        {/* Asset Alignment */}
-        <div className="space-y-4">
-          <div className="p-5 rounded-2xl bg-[#0d0d0d] border border-white/[0.06] space-y-4">
-            <p className="text-[10px] uppercase tracking-widest font-bold text-white/25">Asset Alignment</p>
-
-            {[
-              { icon: <Mic className="w-4 h-4 text-indigo-400" />, label: "Audio Sync", value: 100, valueLabel: "Matched", color: "bg-emerald-400" },
-              { icon: <Type className="w-4 h-4 text-purple-400" />, label: "Lip Sync AI", value: 92, valueLabel: "92%", color: "bg-indigo-400" },
-              { icon: <Layers className="w-4 h-4 text-white/30" />, label: "Color Grading", value: 0, valueLabel: "Queued", color: "bg-white/20" },
-            ].map((asset) => (
-              <div key={asset.label} className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#1a1a1a] border border-white/[0.06] flex items-center justify-center shrink-0">
-                  {asset.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between mb-1">
-                    <span className="text-xs font-semibold text-white/70">{asset.label}</span>
-                    <span className="text-[10px] text-white/35">{asset.valueLabel}</span>
+        {/* LEFT: Asset checklist */}
+        <div className="flex flex-col gap-4">
+          <div className="p-5 rounded-2xl bg-[#0d0d0d] border border-white/[0.06]">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-white/30 mb-4">
+              Asset Validation
+            </p>
+            <div className="space-y-3">
+              {checks.map((check) => (
+                <motion.div
+                  key={check.label}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className={`flex items-start gap-3 p-4 rounded-xl border ${
+                    check.status === "ok"
+                      ? "border-emerald-500/15 bg-emerald-500/[0.04]"
+                      : check.status === "warn"
+                      ? "border-amber-500/15 bg-amber-500/[0.04]"
+                      : "border-rose-500/15 bg-rose-500/[0.04]"
+                  }`}
+                >
+                  {iconFor(check.status)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-semibold text-white">{check.label}</p>
+                      <span
+                        className={`text-[10px] font-mono shrink-0 ${
+                          check.status === "ok"
+                            ? "text-emerald-400"
+                            : check.status === "warn"
+                            ? "text-amber-400"
+                            : "text-rose-400"
+                        }`}
+                      >
+                        {check.detail}
+                      </span>
+                    </div>
+                    <p className="text-xs text-white/35 mt-0.5">{check.description}</p>
                   </div>
-                  <div className="h-0.5 bg-white/[0.06] rounded-full overflow-hidden">
-                    <div className={`h-full ${asset.color} rounded-full`} style={{ width: `${asset.value}%` }} />
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <button className="w-full py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-xs font-bold text-white/50 uppercase tracking-widest hover:bg-white/[0.07] transition-all mt-2">
-              Manage All Assets
-            </button>
+                </motion.div>
+              ))}
+            </div>
           </div>
 
-          {/* System Health */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/15 border border-indigo-500/20">
-            <p className="text-[9px] uppercase tracking-widest font-bold text-indigo-400/60 mb-2">System Health</p>
-            <div className="flex items-center justify-between">
-              <span className="text-2xl font-black text-white">Optimal</span>
-              <Zap className="w-6 h-6 text-amber-400" />
+          {/* Summary pill */}
+          <div
+            className={`p-4 rounded-2xl border flex items-center gap-3 ${
+              criticalMissing
+                ? "bg-rose-500/[0.06] border-rose-500/20"
+                : "bg-emerald-500/[0.06] border-emerald-500/20"
+            }`}
+          >
+            <Layers
+              className={`w-5 h-5 shrink-0 ${criticalMissing ? "text-rose-400" : "text-emerald-400"}`}
+            />
+            <div>
+              <p className={`text-sm font-bold ${criticalMissing ? "text-rose-300" : "text-emerald-300"}`}>
+                {criticalMissing
+                  ? "Missing required assets"
+                  : "All critical assets ready"}
+              </p>
+              <p className="text-xs text-white/30 mt-0.5">
+                {criticalMissing
+                  ? "Complete the missing steps before proceeding to the Editor."
+                  : "You can proceed to the Editor to review subtitles and scene order."}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Preview */}
+        <div className="flex flex-col gap-4">
+          <div className="relative rounded-2xl overflow-hidden bg-[#080808] border border-white/[0.06] flex-1 min-h-[200px]">
+            {previewImage ? (
+              <>
+                <img
+                  src={previewImage}
+                  alt="Scene preview"
+                  className="w-full h-full object-cover opacity-70"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-3 left-3 text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                  Scene 1 preview
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center p-6">
+                <Layers className="w-10 h-10 text-white/10" />
+                <p className="text-xs text-white/20">No preview available</p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-4 rounded-xl bg-[#0d0d0d] border border-white/[0.06] space-y-2">
+            <p className="text-[10px] uppercase tracking-widest font-bold text-white/30">Project</p>
+            <p className="text-sm font-bold text-white truncate">{projectTitle}</p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <div>
+                <p className="text-[10px] text-white/25">Scenes</p>
+                <p className="text-sm font-bold text-white">{scenes.length}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-white/25">Images ready</p>
+                <p className={`text-sm font-bold ${successImages.length === scenes.length ? "text-emerald-400" : "text-amber-400"}`}>
+                  {successImages.length}/{scenes.length}
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="shrink-0 flex items-center justify-end pt-4 border-t border-white/[0.04]">
-        <button
-          onClick={onApprove}
-          disabled={progress < 100}
-          className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide transition-all duration-200 bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none disabled:hover:translate-y-0"
+      <div className="shrink-0 flex items-center justify-between pt-4 border-t border-white/[0.04]">
+        <p className="text-xs text-white/30">
+          {criticalMissing
+            ? "Fix missing assets before continuing"
+            : "Assets validated — ready for the editor"}
+        </p>
+        <motion.button
+          whileHover={!criticalMissing ? { y: -1 } : {}}
+          whileTap={!criticalMissing ? { y: 0 } : {}}
+          onClick={!criticalMissing ? onApprove : undefined}
+          disabled={criticalMissing}
+          className="flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-[13px] tracking-wide transition-all bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_0_20px_rgba(99,102,241,0.2)] hover:shadow-[0_0_25px_rgba(99,102,241,0.3)] disabled:opacity-40 disabled:cursor-not-allowed disabled:shadow-none"
         >
-          Publish Now <ChevronRight className="w-4 h-4" />
-        </button>
+          Proceed to Editor <ChevronRight className="w-4 h-4" />
+        </motion.button>
       </div>
     </div>
   );

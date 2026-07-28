@@ -269,7 +269,10 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
           <div className={panelClass}>
             <CompositionStepPanel
               projectTitle={project.title}
-              previewImageUrl={project?.steps?.images?.data?.[0]?.imageUrl}
+              voice={project?.steps?.voice || {}}
+              images={project?.steps?.images?.data || []}
+              subtitles={project?.steps?.subtitles?.data || []}
+              scenes={project?.steps?.scenes?.data || []}
               onApprove={async () => await executeUpdate("composition", { status: "completed" }, "editor")}
             />
           </div>
@@ -279,7 +282,15 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
           <div className={panelClass}>
             <EditorStepPanel
               projectTitle={project.title}
-              onApprove={async () => await executeUpdate("editor", { status: "completed", editedData: true }, "render")}
+              subtitles={project?.steps?.subtitles?.data || []}
+              images={project?.steps?.images?.data || []}
+              onApprove={async (editedSubtitles) =>
+                await executeUpdate(
+                  "editor",
+                  { status: "completed", editedSubtitles },
+                  "render"
+                )
+              }
             />
           </div>
         );
