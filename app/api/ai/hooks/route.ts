@@ -13,6 +13,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { askAIJSON, VIRAL_HOOKS_SYSTEM_PROMPT } from "@/lib/ai";
 import type { ViralHooksOutput, HookTone } from "@/lib/ai";
+import { retrieveHookFormulas, formatFormulasAsContext } from "@/lib/rag/retriever";
 
 // ─── Input Validation ─────────────────────────────────────────
 
@@ -69,6 +70,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── RAG: Retrieve top-3 hook formulas for this topic ─────
+    const ragQuery = `${idea.trim()} ${niche.trim()} ${tone}`;
+    const retrievedFormulas = await retrieveHookFormulas(ragQuery, 3);
+    const formulaContext = formatFormulasAsContext(retrievedFormulas);
+
     // ── AI Generation ─────────────────────────────────────────
     const result = await askAIJSON<ViralHooksOutput>({
       systemPrompt: VIRAL_HOOKS_SYSTEM_PROMPT,
@@ -77,11 +83,16 @@ export async function POST(req: NextRequest) {
         `Niche: ${niche.trim()}`,
         `Tone: ${tone}`,
         "",
+        `--- PROVEN HOOK FORMULAS (retrieved for this topic) ---`,
+        formulaContext,
+        `--- END FORMULAS ---`,
+        "",
         `Generate 5 killer hooks for this video idea.`,
+        `Use the retrieved formulas above as structural inspiration — adapt their patterns to this specific idea and niche. Do NOT copy the examples verbatim.`,
         `The tone must be "${tone}" — every hook should drip with ${tone === "dramatic" ? "urgency and power" : tone === "emotional" ? "vulnerability and relatability" : "open loops and incomplete reveals"}.`,
         `Make them impossible to scroll past.`,
       ].join("\n"),
-      maxTokens: 800, // hooks are short — tight budget
+      maxTokens: 1500,
       temperature: 0.9, // high creativity for varied hooks
     });
 
@@ -117,6 +128,12 @@ export async function POST(req: NextRequest) {
           hooks: data.hooks,
           idea: idea.trim(),
           tone,
+          ragFormulas: retrievedFormulas.map((f) => ({
+            id: f.id,
+            formula: f.formula,
+            style: f.style,
+            psychTrigger: f.psychTrigger,
+          })),
         },
         usage: result.usage,
       },

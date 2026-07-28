@@ -164,7 +164,7 @@ Return a JSON object with this exact shape:
 {
   "hooks": [
     {
-      "text": "string — the exact opening words (MUST be under 25 words)",
+      "text": "string — the exact opening words (aim for 20-40 words, punchy and complete)",
       "score": number (1-100, estimated click-through / retention impact),
       "style": "question" | "statistic" | "story" | "controversial" | "visual"
     }
@@ -179,7 +179,7 @@ TONE GUIDELINES:
 - "curiosity": Open loops, incomplete information, teasing reveals. Use "this one thing", "nobody talks about", "what happens when". The viewer MUST click to get closure.
 
 UNIVERSAL RULES:
-- Every hook MUST be under 25 words — ruthlessly concise
+- Every hook should be 20-40 words — punchy but complete enough to land the psychological trigger
 - Never start with "Hey guys", "What's up", "In this video", or any filler
 - First 3 words must create instant tension or curiosity
 - Each of the 5 hooks MUST use a DIFFERENT style

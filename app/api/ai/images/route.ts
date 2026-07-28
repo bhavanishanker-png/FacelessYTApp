@@ -22,13 +22,21 @@ import type { ImageStyle, SceneImageOutput } from "@/lib/ai/types";
 
 const STYLE_MODIFIERS: Record<ImageStyle, string> = {
   cinematic:
-    "Cinematic composition, dramatic lighting, anamorphic lens flare, film grain, 35mm photography, shallow depth of field, moody color grading, high contrast shadows",
+    "cinematic composition, dramatic lighting, anamorphic lens flare, film grain, 35mm photography, shallow depth of field, moody color grading, high contrast shadows, masterpiece, ultra-detailed, 8k uhd, professional cinematography",
   anime:
-    "Studio Ghibli inspired anime art style, vibrant cel-shading, expressive linework, soft pastel palette, atmospheric watercolor backgrounds, anime aesthetic",
+    "Studio Ghibli inspired anime art style, vibrant cel-shading, expressive linework, soft pastel palette, atmospheric watercolor backgrounds, anime aesthetic, masterpiece, highly detailed, professional illustration",
   realistic:
-    "Photorealistic, ultra high resolution, natural lighting, DSLR quality, hyper-detailed textures, accurate proportions, photojournalism style",
+    "photorealistic, ultra high resolution, natural lighting, DSLR quality, hyper-detailed textures, accurate proportions, photojournalism style, 8k uhd, award-winning photography, professional color grading",
   minimal:
-    "Clean minimalist illustration, flat design, geometric shapes, limited color palette, whitespace emphasis, modern graphic design, vector art style",
+    "clean minimalist illustration, flat design, geometric shapes, limited color palette, whitespace emphasis, modern graphic design, vector art style, professional, high quality",
+};
+
+// Best Pollinations model per style
+const STYLE_MODELS: Record<ImageStyle, string> = {
+  cinematic: "flux",
+  anime: "flux-anime",
+  realistic: "flux-realism",
+  minimal: "flux",
 };
 
 // (OpenAI removed - using Pollinations instead)
@@ -43,9 +51,9 @@ async function generateSingleImage(
   retries = 2
 ): Promise<{ imageUrl: string; error?: string }> {
   const augmentedPrompt = `${prompt}. Style: ${STYLE_MODIFIERS[style]}. Do NOT include any text, watermarks, or logos in the image.`;
-  // Add random seed to avoid hitting the exact same cache/node on retry
   const seed = Math.floor(Math.random() * 100000000);
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(augmentedPrompt)}?width=1920&height=1080&nologo=true&seed=${seed}`;
+  const model = STYLE_MODELS[style];
+  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(augmentedPrompt)}?width=1920&height=1080&nologo=true&enhance=true&model=${model}&seed=${seed}`;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
