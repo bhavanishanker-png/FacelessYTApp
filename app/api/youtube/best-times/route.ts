@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
 export async function GET(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user || !(session.user as any).id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const { searchParams } = new URL(request.url);
   const timezone = searchParams.get("timezone") || "UTC";
 

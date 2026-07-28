@@ -16,7 +16,7 @@ export default function LibraryPage() {
         const res = await fetch("/api/project");
         const data = await res.json();
         if (res.ok) {
-          setProjects(data.projects || []);
+          setProjects(Array.isArray(data) ? data : []);
         }
       } catch (err) {
         console.error("Failed to load library", err);

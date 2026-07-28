@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     // 1. Authenticate Cron Job
     // If using Vercel Cron, you should verify the auth header
     const authHeader = request.headers.get("authorization");
-    if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    if (!process.env.CRON_SECRET || authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized cron request" }, { status: 401 });
     }
 

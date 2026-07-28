@@ -43,3 +43,6 @@ next-env.d.ts
 /stitch/
 # Generated audio files
 public/audio/
+
+# Generated render files (videos served from Cloudinary, not public/)
+public/renders/

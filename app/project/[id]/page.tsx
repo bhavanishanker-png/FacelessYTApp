@@ -1,4 +1,5 @@
-import React from 'react';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { connectDB } from '@/lib/db';
 import Project from '@/models/Project';
 import { ProjectWorkspace } from '@/components/ProjectWorkspace';
@@ -12,15 +13,18 @@ export default async function ProjectPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params;
-  
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user || !(session.user as any).id) {
+    return notFound();
+  }
+
   await connectDB();
-  
+
   let project;
   try {
-    // Lean strips down mongoose magic, making it a pure JS object so it can cross the Server Component -> Client Component boundary cleanly
-    project = await Project.findById(id).lean();
+    project = await Project.findOne({ _id: id, userId: (session.user as any).id }).lean();
   } catch (e) {
-    // If the ID is an invalid format (not a 24 hex string), Mongoose throws. We catch and 404 cleanly.
     return notFound();
   }
 
@@ -28,7 +32,6 @@ export default async function ProjectPage({
     return notFound();
   }
 
-  // NextJS requires pure serialized JSON when passing objects from Server -> Client components
   const serializedProject = JSON.parse(JSON.stringify(project));
 
   return <ProjectWorkspace key={serializedProject._id.toString()} project={serializedProject} />;

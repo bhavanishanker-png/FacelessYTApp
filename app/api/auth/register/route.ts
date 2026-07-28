@@ -14,6 +14,21 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (name.length > 100) {
+      return NextResponse.json({ message: "Name must be under 100 characters." }, { status: 400 });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ message: "Invalid email address." }, { status: 400 });
+    }
+
+    if (password.length < 8 || password.length > 72) {
+      return NextResponse.json(
+        { message: "Password must be between 8 and 72 characters." },
+        { status: 400 }
+      );
+    }
+
     await connectDB();
 
     const existingUser = await User.findOne({ email });

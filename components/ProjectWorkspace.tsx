@@ -179,7 +179,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
             <ScriptStepPanel
               selectedIdea={selectedIdea}
               selectedHook={selectedHook}
-              format={project?.projectType || "shorts"}
+              format={project?.type || "long"}
               initialScript={selectedScript}
               stepData={project?.steps?.script}
               onAutoSave={onAutoSaveScript}

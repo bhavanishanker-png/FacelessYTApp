@@ -189,7 +189,7 @@ async function executeRenderPipeline(
   animationData: any,
 ) {
   const preset = QUALITY_PRESETS[quality] || QUALITY_PRESETS["1080p"];
-  const outputDir = path.join(process.cwd(), "public", "renders", projectId);
+  const outputDir = path.join("/tmp", "velora-renders", projectId);
   await mkdir(outputDir, { recursive: true });
 
   const tempDir = path.join(outputDir, "temp");
@@ -513,10 +513,10 @@ async function executeRenderPipeline(
       completedAt: Date.now(),
     });
 
-    // Cleanup temp directory
+    // Cleanup entire output directory — video is on Cloudinary, no need to keep local copy
     try {
       const { rm } = await import("fs/promises");
-      await rm(tempDir, { recursive: true, force: true });
+      await rm(outputDir, { recursive: true, force: true });
     } catch { /* non-critical */ }
 
     console.log(`[Render] ✅ Job ${jobId} complete: ${publicUrl} (${Math.round(finalDuration)}s, ${(fileStat.size / 1024 / 1024).toFixed(1)}MB)`);
@@ -540,6 +540,12 @@ async function executeRenderPipeline(
         await project.save();
       }
     } catch { /* ignore */ }
+
+    // Cleanup temp files on failure too
+    try {
+      const { rm } = await import("fs/promises");
+      await rm(outputDir, { recursive: true, force: true });
+    } catch { /* non-critical */ }
   }
 }
 

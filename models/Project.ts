@@ -213,7 +213,9 @@ const ProjectSchema = new Schema<IProject>(
   { timestamps: true }
 );
 
-// Prevent Next.js HMR from creating duplicate models
+ProjectSchema.index({ userId: 1, createdAt: -1 });
+ProjectSchema.index({ _id: 1, userId: 1 });
+
 const Project: Model<IProject> =
   mongoose.models.Project || mongoose.model<IProject>("Project", ProjectSchema);
 

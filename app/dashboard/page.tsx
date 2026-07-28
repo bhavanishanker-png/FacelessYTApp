@@ -317,7 +317,6 @@ export default function DashboardPage() {
               aria-label="Notifications"
             >
               <Bell className="w-4.5 h-4.5" />
-              <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-rose-500 rounded-full" />
             </button>
             <AnimatePresence>
               {showNotifications && (
@@ -330,22 +329,9 @@ export default function DashboardPage() {
                 >
                   <div className="px-5 py-4 border-b border-white/[0.04] flex justify-between items-center">
                     <h3 className="text-sm font-bold text-white">Notifications</h3>
-                    <Badge variant="primary" dot pulse size="sm">3 new</Badge>
                   </div>
-                  <div className="max-h-72 overflow-y-auto">
-                    {[
-                      { title: "Render Complete", desc: "Your video has finished rendering.", time: "2m ago", variant: "success" as const },
-                      { title: "AI Script Ready", desc: "Script generation completed for your project.", time: "15m ago", variant: "primary" as const },
-                      { title: "Storage Warning", desc: "You've used 65% of your cloud storage.", time: "1h ago", variant: "warning" as const },
-                    ].map((n, i) => (
-                      <div key={i} className="px-5 py-3.5 hover:bg-white/[0.02] transition-colors cursor-pointer border-b border-white/[0.02] last:border-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge variant={n.variant} dot size="sm">{n.title}</Badge>
-                          <span className="ml-auto text-[9px] text-white/20 font-medium">{n.time}</span>
-                        </div>
-                        <p className="text-[11px] text-white/30 pl-0.5">{n.desc}</p>
-                      </div>
-                    ))}
+                  <div className="max-h-72 overflow-y-auto flex flex-col items-center justify-center py-10 text-center">
+                    <p className="text-white/30 text-xs">No notifications yet.</p>
                   </div>
                 </motion.div>
               )}
@@ -731,7 +717,7 @@ export default function DashboardPage() {
                         <div className="relative h-40 overflow-hidden bg-[#0a0a0a]">
                         <img
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-40 group-hover:opacity-60"
-                          src="https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&q=80"
+                          src={project.steps?.images?.data?.[0]?.imageUrl || "https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=600&q=80"}
                           alt={project.title}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-[#0d0d0d] via-transparent to-transparent" />

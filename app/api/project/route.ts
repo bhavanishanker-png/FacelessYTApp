@@ -19,8 +19,13 @@ export async function GET() {
     await connectDB();
     
     // Explicitly scope the index lookup to ONLY the projects owned by this user
-    const projects = await Project.find({ userId }).sort({ createdAt: -1 });
-    
+    const page = 0;
+    const limit = 50;
+    const projects = await Project.find({ userId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .skip(page * limit);
+
     return NextResponse.json(projects, { status: 200 });
   } catch (error: any) {
     console.error("Failed to fetch projects:", error);
