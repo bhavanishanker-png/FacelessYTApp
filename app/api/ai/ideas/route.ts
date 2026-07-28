@@ -35,6 +35,17 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    const userId = (session.user as any).id;
+
+    // ── Rate Limit ────────────────────────────────────────────
+    const { checkRateLimit } = await import("@/lib/rateLimit");
+    const rl = await checkRateLimit(userId, "ideas", 10);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetInMs / 1000)}s.` },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetInMs / 1000)) } }
+      );
+    }
 
     // ── Parse & Validate Input ────────────────────────────────
     let body: { niche?: string; platform?: string };
