@@ -33,6 +33,9 @@ export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, init
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const router = useRouter();
 
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const [channels, setChannels] = useState<any[]>([]);
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [ytStatus, setYtStatus] = useState<string>("");
@@ -103,7 +106,9 @@ export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, init
         if (!res.ok) return;
         
         const data = await res.json();
-        
+
+        if (data.jobId) setJobId(data.jobId);
+
         if (data.status === "completed" || data.status === "complete") {
           setProgress(100);
           setPhase("Complete");
@@ -112,6 +117,8 @@ export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, init
         } else if (data.status === "failed") {
           setRenderState("error");
           setErrorMsg(data.error || "Render failed during processing");
+        } else if (data.status === "cancelled") {
+          setRenderState("selecting");
         } else if (data.status === "rendering" || data.status === "encoding" || data.status === "queued") {
           setProgress(data.progress || 0);
           setPhase(data.phase || "Processing...");
@@ -290,10 +297,21 @@ export const RenderStepPanel = ({ projectId, projectTitle, durationSeconds, init
 
             <div className="flex justify-start">
               <button
-                onClick={() => setRenderState("selecting")}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/40 text-sm font-semibold hover:border-rose-500/30 hover:text-rose-400/70 transition-all"
+                disabled={isCancelling}
+                onClick={async () => {
+                  if (!jobId) { setRenderState("selecting"); return; }
+                  setIsCancelling(true);
+                  try {
+                    await fetch(`/api/ai/render?jobId=${jobId}`, { method: "DELETE" });
+                  } catch {}
+                  setIsCancelling(false);
+                  setJobId(null);
+                  setRenderState("selecting");
+                }}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-white/10 text-white/40 text-sm font-semibold hover:border-rose-500/30 hover:text-rose-400/70 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <XCircle className="w-4 h-4" /> Cancel Render
+                {isCancelling ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4" />}
+                {isCancelling ? "Cancelling..." : "Cancel Render"}
               </button>
             </div>
           </motion.div>

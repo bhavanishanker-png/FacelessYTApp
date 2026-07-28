@@ -1,18 +1,12 @@
-/**
- * In-memory render job store for tracking FFmpeg render progress.
- * 
- * In production this would be Redis/BullMQ. For the MVP this lightweight
- * Map-based store is sufficient since the Next.js server process holds
- * the state for the duration of the render.
- */
+import type { ChildProcess } from "child_process";
 
 export interface RenderJob {
   jobId: string;
   projectId: string;
-  status: "queued" | "rendering" | "encoding" | "complete" | "failed";
-  progress: number;        // 0–100
-  phase: string;           // Human-readable current phase
-  startedAt: number;       // Date.now()
+  status: "queued" | "rendering" | "encoding" | "complete" | "failed" | "cancelled";
+  progress: number;
+  phase: string;
+  startedAt: number;
   completedAt?: number;
   videoUrl?: string;
   durationSeconds?: number;
@@ -22,6 +16,7 @@ export interface RenderJob {
 }
 
 const jobs = new Map<string, RenderJob>();
+const processes = new Map<string, ChildProcess>();
 
 export const renderStore = {
   create(job: RenderJob) {
@@ -41,6 +36,7 @@ export const renderStore = {
 
   delete(jobId: string) {
     jobs.delete(jobId);
+    processes.delete(jobId);
   },
 
   getByProject(projectId: string): RenderJob | undefined {
@@ -48,5 +44,24 @@ export const renderStore = {
       if (job.projectId === projectId) return job;
     }
     return undefined;
+  },
+
+  // Store the currently running FFmpeg process for a job
+  setProcess(jobId: string, proc: ChildProcess) {
+    processes.set(jobId, proc);
+  },
+
+  // Kill the active FFmpeg process and mark the job cancelled
+  killJob(jobId: string) {
+    const proc = processes.get(jobId);
+    if (proc) {
+      try { proc.kill("SIGTERM"); } catch {}
+      processes.delete(jobId);
+    }
+    this.update(jobId, {
+      status: "cancelled",
+      phase: "Cancelled",
+      error: "Render cancelled by user",
+    });
   },
 };

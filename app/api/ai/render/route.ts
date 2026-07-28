@@ -135,10 +135,12 @@ function normalizeSubtitles(input: any): { text: string; start: number; end: num
     .filter((seg: { text: string; start: number; end: number }) => seg.text.length > 0 && Number.isFinite(seg.start) && Number.isFinite(seg.end) && seg.end > seg.start);
 }
 
-/** Run an FFmpeg command and return a promise */
-function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> {
+/** Run an FFmpeg command and return a promise. Registers the proc so it can be killed. */
+function runFFmpeg(args: string[], jobId?: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
     const proc = spawn("ffmpeg", args, { stdio: ["pipe", "pipe", "pipe"] });
+    if (jobId) renderStore.setProcess(jobId, proc);
+
     let stdout = "";
     let stderr = "";
 
@@ -262,7 +264,7 @@ async function executeRenderPipeline(
           "-preset", "fast",
           "-t", String(dur),
           "-y", segPath,
-        ]);
+        ], jobId);
       } else {
         // Apply user-selected animation preset from the Animation step
         const preset_id = animationData?.preset || "ken_burns";
@@ -316,7 +318,7 @@ async function executeRenderPipeline(
           "-pix_fmt", "yuv420p",
           "-t", String(dur),
           "-y", segPath,
-        ]);
+        ], jobId);
       }
 
       segmentPaths.push(segPath);
@@ -343,7 +345,7 @@ async function executeRenderPipeline(
       "-preset", "fast",
       "-pix_fmt", "yuv420p",
       "-y", rawVideoPath,
-    ]);
+    ], jobId);
 
     // ─── Phase 4: Add audio track ─────────────────────────────
     renderStore.update(jobId, { progress: 70, phase: "Mixing audio" });
@@ -359,7 +361,7 @@ async function executeRenderPipeline(
       "-map", "1:a:0",
       "-shortest",
       "-y", withAudioPath,
-    ]);
+    ], jobId);
 
     // ─── Phase 5: Burn subtitles ──────────────────────────────
     renderStore.update(jobId, { progress: 80, phase: "Burning subtitles" });
@@ -394,7 +396,7 @@ async function executeRenderPipeline(
             "-preset", "medium",
             "-c:a", "copy",
             "-y", withSubsPath,
-          ]);
+          ], jobId);
           videoForEncode = withSubsPath;
           subtitlesBurned = true;
           console.log("[Render] ✅ Subtitles burned via ASS filter.");
@@ -415,7 +417,7 @@ async function executeRenderPipeline(
             "-preset", "medium",
             "-c:a", "copy",
             "-y", withSubsPath,
-          ]);
+          ], jobId);
           videoForEncode = withSubsPath;
           subtitlesBurned = true;
           console.log("[Render] ✅ Subtitles burned via SRT subtitles filter.");
@@ -435,7 +437,7 @@ async function executeRenderPipeline(
             "-c:s", "mov_text",
             "-metadata:s:s:0", "language=eng",
             "-y", withSubsPath,
-          ]);
+          ], jobId);
           videoForEncode = withSubsPath;
           subtitlesBurned = true;
           console.log("[Render] ✅ Subtitles embedded as soft subs (mov_text). Note: These are NOT burned in — viewer needs to enable CC.");
@@ -654,5 +656,54 @@ export async function POST(request: Request) {
       { error: "Internal server error starting render" },
       { status: 500 }
     );
+  }
+}
+
+// ─── Cancel Render ────────────────────────────────────────────
+
+export async function DELETE(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || !(session.user as any).id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = (session.user as any).id;
+
+    const { searchParams } = new URL(request.url);
+    const jobId = searchParams.get("jobId");
+    if (!jobId) {
+      return NextResponse.json({ error: "jobId is required" }, { status: 400 });
+    }
+
+    const job = renderStore.get(jobId);
+    if (!job) {
+      return NextResponse.json({ error: "Job not found" }, { status: 404 });
+    }
+
+    // Kill the FFmpeg process and mark cancelled
+    renderStore.killJob(jobId);
+
+    // Clean up temp files
+    try {
+      const { rm } = await import("fs/promises");
+      await rm(path.join("/tmp", "velora-renders", job.projectId), { recursive: true, force: true });
+    } catch { /* non-critical */ }
+
+    // Reset render status in MongoDB so user can start a new render
+    await connectDB();
+    const project = await Project.findOne({ _id: job.projectId, userId });
+    if (project) {
+      project.steps.render.status = "pending";
+      project.steps.render.progress = 0;
+      project.steps.render.jobId = "";
+      project.steps.render.error = "";
+      project.markModified("steps.render");
+      await project.save();
+    }
+
+    return NextResponse.json({ success: true, message: "Render cancelled." });
+  } catch (error: any) {
+    console.error("[/api/ai/render DELETE] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
