@@ -129,7 +129,7 @@ export interface SceneImageOutput {
   sceneId: string;
   imageUrl: string;
   prompt: string;
-  status: "success" | "failed";
+  status: "success" | "failed" | "pending";
   error?: string;
 }
 

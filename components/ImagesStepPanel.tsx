@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ImageIcon,
@@ -145,17 +145,20 @@ export const ImagesStepPanel = ({
     }
     return [];
   });
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(() =>
+    stepData?.status === "generating"
+  );
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [isApproving, setIsApproving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const hasImages = images.length > 0 && images.some((i) => i.status === "success");
   const successCount = images.filter((i) => i.status === "success").length;
   const failedCount = images.filter((i) => i.status === "failed").length;
 
-  // ── Build scenes payload from whatever shape we receive ──
+  // ── Build scenes payload ──────────────────────────────────────
   const buildScenesPayload = useCallback(() => {
     return scenes.map((s, idx) => ({
       sceneId: `scene_${idx + 1}`,
@@ -165,16 +168,63 @@ export const ImagesStepPanel = ({
     }));
   }, [scenes]);
 
-  // ── Generate All Images ─────────────────────────────────────
+  // ── Poll progress from backend ────────────────────────────────
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback(() => {
+    stopPolling();
+    pollRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/ai/images?projectId=${projectId}`);
+        if (!res.ok) return;
+        const data = await res.json();
+
+        if (Array.isArray(data.images) && data.images.length > 0) {
+          setImages(data.images);
+          const pct = data.total > 0 ? (data.completed / data.total) * 100 : 0;
+          setProgress(pct);
+        }
+
+        if (data.status === "complete") {
+          stopPolling();
+          setIsGenerating(false);
+          setProgress(100);
+          if (onAutoSave) {
+            onAutoSave({ data: data.images, style, status: "editing" });
+          }
+        } else if (data.status === "failed") {
+          stopPolling();
+          setIsGenerating(false);
+          setError("Image generation failed. Please try again.");
+          setImages([]);
+        }
+      } catch {
+        // keep polling on transient errors
+      }
+    }, 2000);
+  }, [projectId, style, onAutoSave, stopPolling]);
+
+  // Resume polling if we load with status "generating"
+  useEffect(() => {
+    if (stepData?.status === "generating") {
+      startPolling();
+    }
+    return stopPolling;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Generate All Images ────────────────────────────────────────
   const handleGenerateAll = useCallback(async () => {
     if (isGenerating || !scenes?.length) return;
 
     setIsGenerating(true);
     setError(null);
     setProgress(0);
-    setImages([]);
 
-    // Set up placeholder skeletons
     const placeholders: GeneratedImage[] = scenes.map((_, idx) => ({
       sceneId: `scene_${idx + 1}`,
       imageUrl: "",
@@ -183,56 +233,35 @@ export const ImagesStepPanel = ({
     }));
     setImages(placeholders);
 
-    // Simulate progress while waiting
-    const progressInterval = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 90) return 90; // Cap at 90% until done
-        return p + Math.random() * 8;
-      });
-    }, 800);
-
     try {
       const res = await fetch("/api/ai/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          projectId,
-          scenes: buildScenesPayload(),
-          style,
-        }),
+        body: JSON.stringify({ projectId, scenes: buildScenesPayload(), style }),
       });
 
       const result = await res.json();
 
-      clearInterval(progressInterval);
-      setProgress(100);
-
       if (!res.ok || !result.success) {
-        if (res.status === 429) {
-          setError("Rate limited — please wait a moment and try again.");
-        } else {
-          setError(result.error || "Failed to generate images.");
-        }
+        setError(
+          res.status === 429
+            ? "Rate limited — please wait a moment and try again."
+            : result.error || "Failed to start image generation."
+        );
         setImages([]);
         setIsGenerating(false);
         return;
       }
 
-      setImages(result.data.images);
-
-      if (onAutoSave) {
-        onAutoSave({ data: result.data.images, style, status: "editing" });
-      }
+      // Backend accepted the job — start polling for real progress
+      startPolling();
     } catch (err) {
-      clearInterval(progressInterval);
       console.error("[ImagesStepPanel] Generation error:", err);
       setError("Network error — please check your connection.");
       setImages([]);
-    } finally {
       setIsGenerating(false);
-      setTimeout(() => setProgress(0), 1500);
     }
-  }, [isGenerating, scenes, projectId, style, buildScenesPayload, onAutoSave]);
+  }, [isGenerating, scenes, projectId, style, buildScenesPayload, startPolling]);
 
   // ── Regenerate Single Scene ─────────────────────────────────
   const handleRegenerate = useCallback(
@@ -429,7 +458,7 @@ export const ImagesStepPanel = ({
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-[10px] uppercase tracking-[0.15em] text-white/30 font-bold">
-                Generating {scenes?.length} images...
+                {images.filter((i) => i.status !== "pending").length} / {images.length} images ready...
               </span>
               <span className="text-[12px] font-mono font-bold text-indigo-400">
                 {Math.round(progress)}%

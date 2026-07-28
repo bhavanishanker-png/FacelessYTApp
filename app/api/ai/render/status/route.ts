@@ -68,6 +68,17 @@ export async function GET(request: Request) {
 
       const render = project.steps?.render;
       if (render && render.status !== "pending") {
+        // Detect orphaned renders: MongoDB says "rendering" but no in-memory job
+        // means the server restarted and killed the FFmpeg process.
+        const activeStatuses = ["rendering", "encoding", "queued"];
+        if (activeStatuses.includes(render.status)) {
+          render.status = "failed";
+          render.error = "Render was interrupted by a server restart. Please try again.";
+          render.progress = 0;
+          project.markModified("steps.render");
+          await project.save();
+        }
+
         return NextResponse.json({
           jobId: render.jobId || null,
           status: render.status,

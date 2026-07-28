@@ -1,13 +1,9 @@
 /**
- * POST /api/ai/images
+ * POST /api/ai/images  — Start async batch image generation (fire-and-forget)
+ * GET  /api/ai/images  — Poll generation progress
  *
- * Generates one image per scene using OpenAI DALL-E 3.
- * Supports:
- *  - Full batch generation (all scenes)
- *  - Single scene regeneration (sceneId param)
- *  - Style presets that augment prompts
- *  - Automatic retry on transient failures
- *  - Results saved to MongoDB steps.images
+ * Batch generation returns immediately; client polls until status === "complete".
+ * Single-scene regeneration (sceneId param) stays synchronous.
  */
 
 import { NextResponse } from "next/server";
@@ -18,7 +14,7 @@ import Project from "@/models/Project";
 
 import type { ImageStyle, SceneImageOutput } from "@/lib/ai/types";
 
-// ─── Style Prompt Augmentations ───────────────────────────────
+// ─── Style Config ─────────────────────────────────────────────
 
 const STYLE_MODIFIERS: Record<ImageStyle, string> = {
   cinematic:
@@ -31,7 +27,6 @@ const STYLE_MODIFIERS: Record<ImageStyle, string> = {
     "clean minimalist illustration, flat design, geometric shapes, limited color palette, whitespace emphasis, modern graphic design, vector art style, professional, high quality",
 };
 
-// Best Pollinations model per style
 const STYLE_MODELS: Record<ImageStyle, string> = {
   cinematic: "flux",
   anime: "flux-anime",
@@ -39,9 +34,7 @@ const STYLE_MODELS: Record<ImageStyle, string> = {
   minimal: "flux",
 };
 
-// (OpenAI removed - using Pollinations instead)
-
-// ─── Single Image Generator (with retry) ──────────────────────
+// ─── Single Image Generator ────────────────────────────────────
 
 async function generateSingleImage(
   prompt: string,
@@ -59,67 +52,162 @@ async function generateSingleImage(
     try {
       const response = await fetch(pollinationsUrl, {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
         },
       });
-      
-      if (!response.ok) {
-        throw new Error(`Pollinations API error: ${response.status}`);
-      }
+
+      if (!response.ok) throw new Error(`Pollinations API error: ${response.status}`);
 
       const arrayBuffer = await response.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
-      // Upload to Cloudinary to persist the image
       const { uploadBufferToCloudinary } = await import("@/lib/storage");
-      const folderPath = `faceless-yt/projects/${projectId}/images`;
-      const result = await uploadBufferToCloudinary(buffer, folderPath, "image", sceneId);
-      
-      console.log(`[Image Gen] Success! Image generated & saved for scene ${sceneId}`);
+      const result = await uploadBufferToCloudinary(
+        buffer,
+        `faceless-yt/projects/${projectId}/images`,
+        "image",
+        sceneId
+      );
+
+      console.log(`[Image Gen] Success for scene ${sceneId}`);
       return { imageUrl: result.url };
     } catch (err: any) {
-      console.error(`[Image Gen] Attempt ${attempt + 1} failed for prompt: "${prompt.slice(0, 60)}..."`, err.message);
+      console.error(`[Image Gen] Attempt ${attempt + 1} failed for ${sceneId}:`, err.message);
 
-      // Fail fast for deterministic configuration errors
-      if (err.message.includes("Invalid cloud_name") || err.message.includes("Must supply api_key")) {
-         return {
-           imageUrl: "",
-           error: `Cloudinary Configuration Error: ${err.message}. Please check your .env.local file.`,
-         };
+      if (
+        err.message.includes("Invalid cloud_name") ||
+        err.message.includes("Must supply api_key")
+      ) {
+        return { imageUrl: "", error: `Cloudinary config error: ${err.message}` };
       }
 
-      // Rate limit or transient error — wait and retry
       if (attempt < retries) {
-        // Backoff slightly more aggressively for Pollinations
-        const waitMs = Math.min(3000 * (attempt + 1), 12000);
-        await new Promise((r) => setTimeout(r, waitMs));
+        await new Promise((r) => setTimeout(r, Math.min(3000 * (attempt + 1), 12000)));
         continue;
       }
 
-      if (attempt === retries) {
-        return {
-          imageUrl: "",
-          error: err.message || "Image generation failed after retries",
-        };
-      }
+      return { imageUrl: "", error: err.message || "Image generation failed after retries" };
     }
   }
 
   return { imageUrl: "", error: "Exhausted retries" };
 }
 
-// ─── Route Handler ────────────────────────────────────────────
+// ─── Background Batch Generator ───────────────────────────────
 
-export async function POST(request: Request) {
+async function generateImagesBackground(
+  projectId: string,
+  userId: string,
+  scenes: { sceneId: string; prompt: string }[],
+  style: ImageStyle
+) {
+  const CONCURRENCY = 3;
+
   try {
-    // 1. Auth
+    await connectDB();
+
+    for (let i = 0; i < scenes.length; i += CONCURRENCY) {
+      const batch = scenes.slice(i, i + CONCURRENCY);
+
+      await Promise.all(
+        batch.map(async (scene, batchIdx) => {
+          const sceneIndex = i + batchIdx;
+          const { sceneId, prompt } = scene;
+
+          let imageUrl = "";
+          let status: "success" | "failed" = "success";
+          let error = "";
+
+          if (!prompt) {
+            status = "failed";
+            error = "No prompt provided";
+          } else {
+            const result = await generateSingleImage(prompt, style, projectId, sceneId);
+            imageUrl = result.imageUrl;
+            if (result.error) { status = "failed"; error = result.error; }
+          }
+
+          // Atomic per-scene update — no read-modify-write race
+          await Project.findOneAndUpdate(
+            { _id: projectId, userId },
+            {
+              $set: {
+                [`steps.images.data.${sceneIndex}.imageUrl`]: imageUrl,
+                [`steps.images.data.${sceneIndex}.status`]: status,
+                [`steps.images.data.${sceneIndex}.error`]: error,
+              },
+            }
+          );
+        })
+      );
+    }
+
+    await Project.findOneAndUpdate(
+      { _id: projectId, userId },
+      { $set: { "steps.images.status": "complete" } }
+    );
+  } catch (err: any) {
+    console.error("[Image Gen Background] Fatal error:", err.message);
+    try {
+      await Project.findOneAndUpdate(
+        { _id: projectId, userId },
+        { $set: { "steps.images.status": "failed" } }
+      );
+    } catch {}
+  }
+}
+
+// ─── GET — Poll Progress ───────────────────────────────────────
+
+export async function GET(request: Request) {
+  try {
     const session = await getServerSession(authOptions);
     if (!session?.user || !(session.user as any).id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = (session.user as any).id;
 
-    // Rate limit — image generation hits Pollinations + Cloudinary on every call
+    const { searchParams } = new URL(request.url);
+    const projectId = searchParams.get("projectId");
+    if (!projectId) {
+      return NextResponse.json({ error: "projectId required" }, { status: 400 });
+    }
+
+    await connectDB();
+    const project = await Project.findOne({ _id: projectId, userId });
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    const imagesStep = project.steps?.images;
+    const data: any[] = imagesStep?.data || [];
+    const total = data.length;
+    const completed = data.filter((i: any) => i.status === "success" || i.status === "failed").length;
+
+    return NextResponse.json({
+      status: imagesStep?.status || "pending",
+      style: imagesStep?.style || "cinematic",
+      images: data,
+      total,
+      completed,
+    });
+  } catch (error: any) {
+    console.error("[GET /api/ai/images] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+// ─── POST — Start Generation ───────────────────────────────────
+
+export async function POST(request: Request) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user || !(session.user as any).id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+    const userId = (session.user as any).id;
+
     const { checkRateLimit } = await import("@/lib/rateLimit");
     const rl = await checkRateLimit(userId, "images", 5);
     if (!rl.allowed) {
@@ -129,16 +217,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2. Parse body
     const body = await request.json();
-    const {
-      projectId,
-      scenes,
-      style = "cinematic",
-      sceneId, // Optional: for single-scene regeneration
-    } = body;
+    const { projectId, scenes, style = "cinematic", sceneId } = body;
 
-    // 3. Validate
     if (!projectId) {
       return NextResponse.json({ error: "projectId is required" }, { status: 400 });
     }
@@ -152,35 +233,25 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-
     const project = await Project.findOne({ _id: projectId, userId });
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
-    // ─── Single Scene Regeneration ─────────────────────────────
+    // ── Single Scene Regen (stays synchronous — one image is fast) ──
     if (sceneId) {
       const existingImages = project.steps?.images?.data || [];
       const sceneToRegen = existingImages.find((img: any) => img.sceneId === sceneId);
 
       if (!sceneToRegen) {
-        return NextResponse.json(
-          { error: `Scene ${sceneId} not found in existing images` },
-          { status: 404 }
-        );
+        return NextResponse.json({ error: `Scene ${sceneId} not found` }, { status: 404 });
       }
 
       const result = await generateSingleImage(sceneToRegen.prompt, style, projectId, sceneId);
 
-      // Update only the specific scene in the array
       const updatedImages = existingImages.map((img: any) =>
         img.sceneId === sceneId
-          ? {
-              ...img,
-              imageUrl: result.imageUrl || img.imageUrl,
-              status: result.error ? "failed" : "success",
-              error: result.error || "",
-            }
+          ? { ...img, imageUrl: result.imageUrl || img.imageUrl, status: result.error ? "failed" : "success", error: result.error || "" }
           : img
       );
 
@@ -191,91 +262,43 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         success: true,
-        data: {
-          sceneId,
-          imageUrl: result.imageUrl,
-          status: result.error ? "failed" : "success",
-          error: result.error,
-        },
+        data: { sceneId, imageUrl: result.imageUrl, status: result.error ? "failed" : "success", error: result.error },
       });
     }
 
-    // ─── Batch Generation ──────────────────────────────────────
+    // ── Batch Generation — fire and forget ────────────────────
     if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
-      return NextResponse.json(
-        { error: "scenes array is required for batch generation" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "scenes array is required" }, { status: 400 });
     }
 
-    // Generate all images concurrently (restored to 3 now that User-Agent and seed are bypassing rate limits)
-    const CONCURRENCY = 3;
-    const results: SceneImageOutput[] = [];
+    const scenesPayload = scenes.map((s: any, i: number) => ({
+      sceneId: s.sceneId || `scene_${i + 1}`,
+      prompt: s.prompt || s.imagePrompt || "",
+    }));
 
-    for (let i = 0; i < scenes.length; i += CONCURRENCY) {
-      const batch = scenes.slice(i, i + CONCURRENCY);
+    // Initialize all scenes as pending in MongoDB
+    const initialImages: SceneImageOutput[] = scenesPayload.map((s) => ({
+      sceneId: s.sceneId,
+      imageUrl: "",
+      prompt: s.prompt,
+      status: "pending" as const,
+      error: "",
+    }));
 
-      const batchResults = await Promise.all(
-        batch.map(async (scene: any, batchIdx: number) => {
-          const sceneIndex = i + batchIdx;
-          const id = scene.sceneId || `scene_${sceneIndex + 1}`;
-          const prompt = scene.prompt || scene.imagePrompt || "";
-
-          if (!prompt) {
-            return {
-              sceneId: id,
-              imageUrl: "",
-              prompt: "",
-              status: "failed" as const,
-              error: "No prompt provided for this scene",
-            };
-          }
-
-          const result = await generateSingleImage(prompt, style, projectId, id);
-
-          return {
-            sceneId: id,
-            imageUrl: result.imageUrl,
-            prompt,
-            status: (result.error ? "failed" : "success") as "success" | "failed",
-            error: result.error || "",
-          };
-        })
-      );
-
-      results.push(...batchResults);
-    }
-
-    // 4. Persist to MongoDB
-    project.steps.images = {
-      status: "editing",
-      style,
-      data: results,
-    };
+    project.steps.images = { status: "generating", style, data: initialImages };
     project.markModified("steps.images");
     await project.save();
 
+    // Fire and forget — Node.js continues the async work after response is sent
+    generateImagesBackground(projectId, userId, scenesPayload, style).catch(console.error);
+
     return NextResponse.json({
       success: true,
-      data: {
-        images: results,
-        style,
-        generatedAt: new Date().toISOString(),
-        stats: {
-          total: results.length,
-          succeeded: results.filter((r) => r.status === "success").length,
-          failed: results.filter((r) => r.status === "failed").length,
-        },
-      },
+      status: "generating",
+      total: scenesPayload.length,
     });
   } catch (error: any) {
-    console.error("[/api/ai/images] Error:", error);
-
-
-
-    return NextResponse.json(
-      { error: "Internal server error during image generation" },
-      { status: 500 }
-    );
+    console.error("[POST /api/ai/images] Error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
