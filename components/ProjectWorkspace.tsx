@@ -220,7 +220,7 @@ export const ProjectWorkspace = ({ project }: { project: any }) => {
         );
       case "animation":
         return (
-          <div className={`${panelClass} overflow-y-auto overscroll-y-contain`}>
+          <div className="h-full rounded-2xl bg-[#0d0d0d] border border-white/[0.04] p-6 md:p-8 relative overflow-x-hidden overflow-y-auto overscroll-y-contain custom-scrollbar">
             <AnimationStepPanel
               scenes={selectedScenes.map((scene, i) => ({
                 ...scene,
