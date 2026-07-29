@@ -13,6 +13,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { askAIJSON, VIRAL_IDEAS_SYSTEM_PROMPT } from "@/lib/ai";
 import type { ViralIdeasOutput } from "@/lib/ai";
+import { retrieveViralContent, formatViralContentAsContext } from "@/lib/rag/viralContentRetriever";
 
 // ─── Input Validation ─────────────────────────────────────────
 
@@ -74,18 +75,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── RAG: Retrieve Viral Content Examples ─────────────────
+    let ragContext = "";
+    let ragCount = 0;
+    try {
+      const ragQuery = `${niche.trim()} ${platform} viral youtube content`;
+      const viralExamples = await retrieveViralContent(ragQuery, 5);
+      if (viralExamples.length > 0) {
+        ragContext = formatViralContentAsContext(viralExamples);
+        ragCount = viralExamples.length;
+      }
+    } catch (ragErr) {
+      // Non-fatal — proceed without RAG context if DB unavailable
+      console.warn("[/api/ai/ideas] RAG retrieval failed (proceeding without):", ragErr);
+    }
+
     // ── AI Generation ─────────────────────────────────────────
+    const userMessage = [
+      `Niche: "${niche.trim()}"`,
+      `Platform: ${platform}`,
+      "",
+      ...(ragContext
+        ? [
+            "--- VIRAL CONTENT KNOWLEDGE BASE ---",
+            "Study these proven high-performing videos from similar niches.",
+            "Learn their hook styles, storytelling patterns, and viral factors.",
+            "Use this intelligence to craft superior ideas for this niche:",
+            ragContext,
+            "--- END KNOWLEDGE BASE ---",
+            "",
+          ]
+        : []),
+      `Generate 10 viral faceless YouTube ${platform === "shorts" ? "Shorts" : "long-form video"} ideas for the "${niche.trim()}" niche.`,
+      "Apply the hook styles, storytelling patterns, and viral factors from the examples above.",
+      "Make every title irresistibly clickable. Sort by virality score (highest first).",
+    ].join("\n");
+
     const result = await askAIJSON<ViralIdeasOutput>({
       systemPrompt: VIRAL_IDEAS_SYSTEM_PROMPT,
-      userMessage: [
-        `Niche: "${niche.trim()}"`,
-        `Platform: ${platform}`,
-        "",
-        `Generate 10 viral faceless YouTube ${platform === "shorts" ? "Shorts" : "long-form video"} ideas for this niche.`,
-        `Make every title irresistibly clickable. Sort by virality score (highest first).`,
-      ].join("\n"),
-      maxTokens: 2000,
-      temperature: 0.85, // slightly creative for idea diversity
+      userMessage,
+      maxTokens: 2500,
+      temperature: 0.85,
     });
 
     // ── Handle AI Errors ──────────────────────────────────────
@@ -120,6 +150,7 @@ export async function POST(req: NextRequest) {
           ideas: data.ideas,
           niche: niche.trim(),
           platform,
+          ragExamplesUsed: ragCount,
         },
         usage: result.usage,
       },

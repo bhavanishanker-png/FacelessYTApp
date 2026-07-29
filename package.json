@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed:hooks": "tsx --env-file=.env.local scripts/seedHookFormulas.ts"
+    "seed:hooks": "tsx --env-file=.env.local scripts/seedHookFormulas.ts",
+    "seed:viral": "tsx --env-file=.env.local scripts/seedViralContent.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
