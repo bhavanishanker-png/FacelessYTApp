@@ -9,7 +9,8 @@
  */
 
 // Provider functions
-export { askAI, askAIJSON } from "./provider";
+export { askAI, askAIJSON, activeProvider, activeModel } from "./provider";
+export type { ActiveModelInfo } from "./provider";
 
 // System prompts
 export {

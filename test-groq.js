@@ -51,7 +51,9 @@ CRITICAL FORMATTING RULES:
 
 async function main() {
   const response = await openai.chat.completions.create({
-    model: "llama-3.3-70b-versatile",
+    model: "openai/gpt-oss-120b",
+    max_tokens: 4096,
+    reasoning_effort: "low",
     messages: [
       { role: "system", content: prompt },
       { role: "user", content: "Niche: finance\nPlatform: shorts\nGenerate 10 viral ideas." }

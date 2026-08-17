@@ -5,6 +5,7 @@ import { signOut } from "next-auth/react";
 import { motion } from "framer-motion";
 import { Sparkles, LayoutDashboard, LogOut, BarChart3, FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ModelBadge } from "./ModelBadge";
 
 const SIDEBAR_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -58,7 +59,8 @@ export const Sidebar = ({ activeItem = "Dashboard" }: { activeItem?: string }) =
 
       {/* Bottom */}
       <div className="px-3 pb-5">
-        <div className="pt-3 border-t border-white/[0.04]">
+        <ModelBadge />
+        <div className="pt-3 mt-3 border-t border-white/[0.04]">
           <button
             onClick={() => signOut({ callbackUrl: "/login" })}
             className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all text-[11px] font-medium text-white/20 hover:text-rose-400/70 hover:bg-white/[0.02]"
