@@ -11,7 +11,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { askAIJSON, VIRAL_HOOKS_SYSTEM_PROMPT } from "@/lib/ai";
+import { askAIJSON, VIRAL_HOOKS_SYSTEM_PROMPT, HOOKS_CRITIC_SYSTEM_PROMPT, runCriticRefiner } from "@/lib/ai";
 import type { ViralHooksOutput, HookTone } from "@/lib/ai";
 import { retrieveHookFormulas, formatFormulasAsContext } from "@/lib/rag/retriever";
 
@@ -131,12 +131,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Critic-Refiner Agent Loop ─────────────────────────────
+    const refined = await runCriticRefiner<ViralHooksOutput>({
+      draft: data,
+      draftSerializer: (d) =>
+        d.hooks
+          .map((h, i) => `Hook ${i + 1} [${h.style}] (score: ${h.score}):\n${h.text}`)
+          .join("\n\n"),
+      critiqueSystemPrompt: HOOKS_CRITIC_SYSTEM_PROMPT,
+      critiqueContext: `Video Idea: "${idea.trim()}"\nNiche: ${niche.trim()}\nTone: ${tone}`,
+      refineSystemPrompt: VIRAL_HOOKS_SYSTEM_PROMPT,
+      buildRefineMessage: (draft, critique) =>
+        [
+          `Video Idea: "${idea.trim()}"`,
+          `Niche: ${niche.trim()}`,
+          `Tone: ${tone}`,
+          "",
+          `--- PROVEN HOOK FORMULAS ---`,
+          formulaContext,
+          `--- END FORMULAS ---`,
+          "",
+          `--- CRITIC FEEDBACK (score: ${critique.score}/10) ---`,
+          `Weaknesses: ${critique.weaknesses.join("; ")}`,
+          `Required improvements: ${critique.improvements}`,
+          `--- END CRITIC FEEDBACK ---`,
+          "",
+          `Rewrite all 5 hooks to address the critic's feedback. Target score 8+.`,
+          `Maintain the "${tone}" tone throughout.`,
+        ].join("\n"),
+      threshold: 7,
+      maxIterations: 2,
+    });
+
     // ── Response ──────────────────────────────────────────────
     return NextResponse.json(
       {
         success: true,
         data: {
-          hooks: data.hooks,
+          hooks: refined.data.hooks,
           idea: idea.trim(),
           tone,
           ragFormulas: retrievedFormulas.map((f) => ({
@@ -145,6 +177,13 @@ export async function POST(req: NextRequest) {
             style: f.style,
             psychTrigger: f.psychTrigger,
           })),
+        },
+        agentMeta: {
+          score: refined.critique.score,
+          iterations: refined.iterations,
+          improved: refined.improved,
+          strengths: refined.critique.strengths,
+          weaknesses: refined.critique.weaknesses,
         },
         usage: result.usage,
       },

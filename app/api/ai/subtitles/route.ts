@@ -24,21 +24,21 @@ import type { SubtitleSegment, SubtitleWord } from "@/lib/ai/types";
 
 // ─── Groq Client ────────────────────────────────────────────
 
-let openaiClient: OpenAI | null = null;
+let groqClient: OpenAI | null = null;
 
-function getOpenAI(): OpenAI {
-  if (openaiClient) return openaiClient;
+function getGroq(): OpenAI {
+  if (groqClient) return groqClient;
 
   const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     throw new Error("Missing GROQ_API_KEY — add it to .env.local");
   }
 
-  openaiClient = new OpenAI({ 
+  groqClient = new OpenAI({
     apiKey,
-    baseURL: "https://api.groq.com/openai/v1" 
+    baseURL: "https://api.groq.com/openai/v1",
   });
-  return openaiClient;
+  return groqClient;
 }
 
 // ─── Route Handler ────────────────────────────────────────────
@@ -51,6 +51,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const userId = (session.user as any).id;
+
+    const { checkRateLimit } = await import("@/lib/rateLimit");
+    const rl = await checkRateLimit(userId, "subtitles", 5);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetInMs / 1000)}s.` },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetInMs / 1000)) } }
+      );
+    }
 
     // 2. Parse body
     const body = await request.json();
@@ -97,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     // 4. Generate subtitles via Groq Whisper
-    const openai = getOpenAI();
+    const openai = getGroq();
 
     const transcription = await openai.audio.transcriptions.create({
       file: fileStreamOrBlob,

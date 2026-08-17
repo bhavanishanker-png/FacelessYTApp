@@ -24,6 +24,16 @@ export async function POST(req: NextRequest) {
         { status: 401 }
       );
     }
+    const userId = (session.user as any).id;
+
+    const { checkRateLimit } = await import("@/lib/rateLimit");
+    const rl = await checkRateLimit(userId, "scenes", 5);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { success: false, error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetInMs / 1000)}s.` },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetInMs / 1000)) } }
+      );
+    }
 
     // ── Parse & Validate Input ────────────────────────────────
     let body: { script?: string };
@@ -55,8 +65,8 @@ export async function POST(req: NextRequest) {
         `---`,
         `Break this down into high-retention visual scenes. Ensure pacing is good, visuals are strong, and image prompts are useful for AI image generators.`,
       ].join("\n"),
-      maxTokens: 4000, // Scenes can be quite large
-      temperature: 0.6, // More deterministic for structural breakdown
+      maxTokens: 8000,
+      temperature: 0.6,
     });
 
     // ── Handle AI Errors ──────────────────────────────────────

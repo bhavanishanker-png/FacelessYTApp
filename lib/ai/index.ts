@@ -20,7 +20,13 @@ export {
   SCENES_SYSTEM_PROMPT,
   VIRAL_IDEAS_SYSTEM_PROMPT,
   VIRAL_HOOKS_SYSTEM_PROMPT,
+  HOOKS_CRITIC_SYSTEM_PROMPT,
+  SCRIPT_CRITIC_SYSTEM_PROMPT,
 } from "./prompts";
+
+// Critic-Refiner agent loop
+export { runCriticRefiner } from "./criticRefiner";
+export type { CritiqueOutput, CriticRefinedResult } from "./criticRefiner";
 
 // Types — re-export for convenience
 export type {
@@ -29,8 +35,6 @@ export type {
   AIResponse,
   AIErrorResponse,
   AIProvider,
-  IdeaOutput,
-  HookOutput,
   ScriptOutput,
   ScenesOutput,
   ViralIdea,

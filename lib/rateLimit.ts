@@ -62,7 +62,7 @@ export async function checkRateLimit(
         $inc: { count: 1 },
         $setOnInsert: { key, windowStart: now, expireAt },
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     );
 
     const count = doc?.count ?? 1;

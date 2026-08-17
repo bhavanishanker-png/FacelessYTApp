@@ -27,14 +27,58 @@ const STYLE_MODIFIERS: Record<ImageStyle, string> = {
     "clean minimalist illustration, flat design, geometric shapes, limited color palette, whitespace emphasis, modern graphic design, vector art style, professional, high quality",
 };
 
-const STYLE_MODELS: Record<ImageStyle, string> = {
+// FLUX.1-schnell is deprecated on hf-inference; SD3 is the current supported text-to-image model
+const HF_MODEL = "stabilityai/stable-diffusion-3-medium-diffusers";
+const HF_API_URL = `https://router.huggingface.co/hf-inference/models/${HF_MODEL}`;
+
+// ─── Pollinations fallback ────────────────────────────────────
+
+const POLLINATIONS_STYLE_MODELS: Record<ImageStyle, string> = {
   cinematic: "flux",
   anime: "flux-anime",
   realistic: "flux-realism",
   minimal: "flux",
 };
 
-// ─── Single Image Generator ────────────────────────────────────
+async function generateViaPollinationsWithRetry(
+  augmentedPrompt: string,
+  style: ImageStyle,
+  projectId: string,
+  sceneId: string
+): Promise<{ imageUrl: string; error?: string }> {
+  const seed = Math.floor(Math.random() * 100000000);
+  const model = POLLINATIONS_STYLE_MODELS[style];
+  const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(augmentedPrompt)}?width=1280&height=720&nologo=true&enhance=true&model=${model}&seed=${seed}`;
+
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    try {
+      const response = await fetch(url, {
+        headers: { "User-Agent": "Mozilla/5.0" },
+      });
+
+      if (response.status === 429) {
+        const waitMs = parseInt(response.headers.get("retry-after") ?? "30", 10) * 1000;
+        console.warn(`[Image Gen] Pollinations 429 for ${sceneId} — waiting ${waitMs / 1000}s`);
+        if (attempt < 2) { await new Promise((r) => setTimeout(r, waitMs)); continue; }
+        return { imageUrl: "", error: "Pollinations rate limit" };
+      }
+
+      if (!response.ok) throw new Error(`Pollinations ${response.status}`);
+
+      const buffer = Buffer.from(await response.arrayBuffer());
+      const { uploadBufferToCloudinary } = await import("@/lib/storage");
+      const result = await uploadBufferToCloudinary(buffer, `faceless-yt/projects/${projectId}/images`, "image", sceneId);
+      console.log(`[Image Gen] Pollinations fallback success for ${sceneId}`);
+      return { imageUrl: result.url };
+    } catch (err: any) {
+      if (attempt < 2) { await new Promise((r) => setTimeout(r, 5000 * (attempt + 1))); continue; }
+      return { imageUrl: "", error: err.message };
+    }
+  }
+  return { imageUrl: "", error: "Pollinations exhausted retries" };
+}
+
+// ─── Single Image Generator (HuggingFace → Pollinations fallback) ──
 
 async function generateSingleImage(
   prompt: string,
@@ -43,55 +87,77 @@ async function generateSingleImage(
   sceneId: string,
   retries = 2
 ): Promise<{ imageUrl: string; error?: string }> {
-  const augmentedPrompt = `${prompt}. Style: ${STYLE_MODIFIERS[style]}. Do NOT include any text, watermarks, or logos in the image.`;
-  const seed = Math.floor(Math.random() * 100000000);
-  const model = STYLE_MODELS[style];
-  const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(augmentedPrompt)}?width=1920&height=1080&nologo=true&enhance=true&model=${model}&seed=${seed}`;
+  const apiKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
+  const augmentedPrompt = `${prompt}. ${STYLE_MODIFIERS[style]}. No text, watermarks, or logos.`;
+  const seed = Math.floor(Math.random() * 2147483647);
 
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const response = await fetch(pollinationsUrl, {
-        headers: {
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        },
-      });
+  // ── HuggingFace (primary) ─────────────────────────────────────
+  if (apiKey) {
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90_000);
 
-      if (!response.ok) throw new Error(`Pollinations API error: ${response.status}`);
+        let response: Response;
+        try {
+          response = await fetch(HF_API_URL, {
+            method: "POST",
+            signal: controller.signal,
+            headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+            body: JSON.stringify({ inputs: augmentedPrompt }),
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
 
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+        if (response.status === 503) {
+          const json = await response.json().catch(() => ({}));
+          const waitSec = (json.estimated_time ?? 20) + 2;
+          console.warn(`[Image Gen] HF model loading for ${sceneId} — waiting ${waitSec}s`);
+          if (attempt < retries) { await new Promise((r) => setTimeout(r, waitSec * 1000)); continue; }
+          break; // fall through to Pollinations
+        }
 
-      const { uploadBufferToCloudinary } = await import("@/lib/storage");
-      const result = await uploadBufferToCloudinary(
-        buffer,
-        `faceless-yt/projects/${projectId}/images`,
-        "image",
-        sceneId
-      );
+        if (response.status === 429) {
+          const waitMs = parseInt(response.headers.get("retry-after") ?? "30", 10) * 1000;
+          console.warn(`[Image Gen] HF 429 for ${sceneId} — waiting ${waitMs / 1000}s`);
+          if (attempt < retries) { await new Promise((r) => setTimeout(r, waitMs)); continue; }
+          break; // fall through to Pollinations
+        }
 
-      console.log(`[Image Gen] Success for scene ${sceneId}`);
-      return { imageUrl: result.url };
-    } catch (err: any) {
-      console.error(`[Image Gen] Attempt ${attempt + 1} failed for ${sceneId}:`, err.message);
+        if (!response.ok) {
+          const text = await response.text().catch(() => `status ${response.status}`);
+          throw new Error(`HuggingFace API error ${response.status}: ${text.slice(0, 200)}`);
+        }
 
-      if (
-        err.message.includes("Invalid cloud_name") ||
-        err.message.includes("Must supply api_key")
-      ) {
-        return { imageUrl: "", error: `Cloudinary config error: ${err.message}` };
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const { uploadBufferToCloudinary } = await import("@/lib/storage");
+        const result = await uploadBufferToCloudinary(buffer, `faceless-yt/projects/${projectId}/images`, "image", sceneId);
+        console.log(`[Image Gen] HF success for ${sceneId}`);
+        return { imageUrl: result.url };
+      } catch (err: any) {
+        const cause = err.name === "AbortError" ? "timeout (90s)" : (err.cause?.code ?? err.message);
+        console.warn(`[Image Gen] HF attempt ${attempt + 1} failed for ${sceneId}: ${cause}`);
+
+        if (err.message?.includes("Invalid cloud_name") || err.message?.includes("Must supply api_key")) {
+          return { imageUrl: "", error: `Cloudinary config error: ${err.message}` };
+        }
+
+        const isNetworkError = err.cause?.code === "ENOTFOUND" || err.cause?.code === "ECONNREFUSED";
+        if (isNetworkError) {
+          console.warn(`[Image Gen] HF unreachable — falling back to Pollinations for ${sceneId}`);
+          break; // skip remaining HF retries, go straight to Pollinations
+        }
+
+        if (attempt < retries) { await new Promise((r) => setTimeout(r, 5000 * (attempt + 1))); continue; }
+        break; // fall through to Pollinations
       }
-
-      if (attempt < retries) {
-        await new Promise((r) => setTimeout(r, Math.min(3000 * (attempt + 1), 12000)));
-        continue;
-      }
-
-      return { imageUrl: "", error: err.message || "Image generation failed after retries" };
     }
   }
 
-  return { imageUrl: "", error: "Exhausted retries" };
+  // ── Pollinations (fallback) ───────────────────────────────────
+  console.log(`[Image Gen] Using Pollinations for ${sceneId}`);
+  return generateViaPollinationsWithRetry(augmentedPrompt, style, projectId, sceneId);
 }
 
 // ─── Background Batch Generator ───────────────────────────────
@@ -102,44 +168,39 @@ async function generateImagesBackground(
   scenes: { sceneId: string; prompt: string }[],
   style: ImageStyle
 ) {
-  const CONCURRENCY = 3;
+  const IMAGE_GAP_MS = 3000;
 
   try {
     await connectDB();
 
-    for (let i = 0; i < scenes.length; i += CONCURRENCY) {
-      const batch = scenes.slice(i, i + CONCURRENCY);
+    for (let i = 0; i < scenes.length; i++) {
+      if (i > 0) await new Promise((r) => setTimeout(r, IMAGE_GAP_MS));
 
-      await Promise.all(
-        batch.map(async (scene, batchIdx) => {
-          const sceneIndex = i + batchIdx;
-          const { sceneId, prompt } = scene;
+      const { sceneId, prompt } = scenes[i];
 
-          let imageUrl = "";
-          let status: "success" | "failed" = "success";
-          let error = "";
+      let imageUrl = "";
+      let status: "success" | "failed" = "success";
+      let error = "";
 
-          if (!prompt) {
-            status = "failed";
-            error = "No prompt provided";
-          } else {
-            const result = await generateSingleImage(prompt, style, projectId, sceneId);
-            imageUrl = result.imageUrl;
-            if (result.error) { status = "failed"; error = result.error; }
-          }
+      if (!prompt) {
+        status = "failed";
+        error = "No prompt provided";
+      } else {
+        const result = await generateSingleImage(prompt, style, projectId, sceneId);
+        imageUrl = result.imageUrl;
+        if (result.error) { status = "failed"; error = result.error; }
+      }
 
-          // Atomic per-scene update — no read-modify-write race
-          await Project.findOneAndUpdate(
-            { _id: projectId, userId },
-            {
-              $set: {
-                [`steps.images.data.${sceneIndex}.imageUrl`]: imageUrl,
-                [`steps.images.data.${sceneIndex}.status`]: status,
-                [`steps.images.data.${sceneIndex}.error`]: error,
-              },
-            }
-          );
-        })
+      // Atomic per-scene update — no read-modify-write race
+      await Project.findOneAndUpdate(
+        { _id: projectId, userId },
+        {
+          $set: {
+            [`steps.images.data.${i}.imageUrl`]: imageUrl,
+            [`steps.images.data.${i}.status`]: status,
+            [`steps.images.data.${i}.error`]: error,
+          },
+        }
       );
     }
 

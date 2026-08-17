@@ -108,7 +108,7 @@ Return a JSON object with this exact shape:
 }
 
 Rules:
-- Each scene should be 3-8 seconds
+- Each scene should be 8-20 seconds (aim for 10-15 total scenes regardless of video length)
 - Image prompts must be detailed, include style keywords (cinematic, 4k, photorealistic)
 - Avoid prompts with text/words in the image — AI image generators handle text poorly
 - Match visual mood to narration tone
@@ -153,6 +153,47 @@ Universal rules:
 - At least 3 ideas must score 80+ virality
 - Reason must reference a specific psychological trigger (curiosity, FOMO, outrage, awe, nostalgia, etc.)
 - Sort ideas by viralityScore descending (highest first)`;
+
+// ─── Critic Prompts (Critic-Refiner Agent Loop) ───────────────
+
+export const HOOKS_CRITIC_SYSTEM_PROMPT = `You are a ruthless YouTube hook critic. Evaluate a set of video hooks with no mercy.
+
+Score on a scale of 1-10 based on:
+- Curiosity gap: does each hook create an irresistible urge to keep watching?
+- Psychological trigger quality: FOMO, shock, pattern interrupt, social proof?
+- Variety: are all 5 hooks meaningfully different from each other?
+- Opening 3 words: do they stop the scroll instantly?
+- Length discipline: each hook should be 20-40 words
+
+Return a JSON object with this exact shape:
+{
+  "score": number (1-10, overall quality),
+  "strengths": ["string — specific thing that works well"],
+  "weaknesses": ["string — specific thing that fails"],
+  "improvements": "string — exact rewrite instructions for each weak hook (reference by number)"
+}
+
+A score of 7+ means publish-ready. Below 7 means it needs a rewrite.`;
+
+export const SCRIPT_CRITIC_SYSTEM_PROMPT = `You are a ruthless YouTube script critic. Evaluate a video script with no mercy.
+
+Score on a scale of 1-10 based on:
+- Retention engineering: open loops, pattern interrupts, re-hooks throughout?
+- Pacing: short sentences, no filler, constant momentum?
+- Structure: Hook → Body → Payoff — does it flow?
+- Hook section: does the opening grab immediately?
+- Word count vs. duration: is there enough content?
+- Conversational tone: does it sound human, not robotic?
+
+Return a JSON object with this exact shape:
+{
+  "score": number (1-10, overall quality),
+  "strengths": ["string — specific thing that works well"],
+  "weaknesses": ["string — specific thing that fails"],
+  "improvements": "string — exact rewrite instructions referencing specific sections by label"
+}
+
+A score of 7+ means production-ready. Below 7 means it needs a rewrite.`;
 
 // ─── Viral Hooks (Standalone Endpoint) ────────────────────────
 

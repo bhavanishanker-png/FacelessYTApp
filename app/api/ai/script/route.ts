@@ -11,7 +11,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import { askAIJSON, SCRIPT_SYSTEM_PROMPT } from "@/lib/ai";
+import { askAIJSON, SCRIPT_SYSTEM_PROMPT, SCRIPT_CRITIC_SYSTEM_PROMPT, runCriticRefiner } from "@/lib/ai";
 import type { ScriptOutput } from "@/lib/ai";
 
 export async function POST(req: NextRequest) {
@@ -107,11 +107,47 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ── Critic-Refiner Agent Loop ─────────────────────────────
+    const refined = await runCriticRefiner<ScriptOutput>({
+      draft: data,
+      draftSerializer: (d) =>
+        d.sections
+          .map((s) => `[${s.label}] (${s.durationSeconds}s)\n${s.content}`)
+          .join("\n\n"),
+      critiqueSystemPrompt: SCRIPT_CRITIC_SYSTEM_PROMPT,
+      critiqueContext: `Video Idea: "${idea.trim()}"\nHook: "${hook.trim()}"\nFormat: ${safeFormat}\nDuration: ${safeDuration}`,
+      refineSystemPrompt: SCRIPT_SYSTEM_PROMPT,
+      buildRefineMessage: (draft, critique) =>
+        [
+          `Video Idea: "${idea.trim()}"`,
+          `Selected Hook: "${hook.trim()}"`,
+          `Target Format: ${safeFormat}`,
+          `Target Duration: ${safeDuration}`,
+          "",
+          `--- CRITIC FEEDBACK (score: ${critique.score}/10) ---`,
+          `Weaknesses: ${critique.weaknesses.join("; ")}`,
+          `Required improvements: ${critique.improvements}`,
+          `--- END CRITIC FEEDBACK ---`,
+          "",
+          `Rewrite the full script addressing every point in the critic's feedback.`,
+          `Ensure the final structure has a Hook Intro, a Body, and a Payoff Ending.`,
+        ].join("\n"),
+      threshold: 7,
+      maxIterations: 2,
+    });
+
     // ── Response ──────────────────────────────────────────────
     return NextResponse.json(
       {
         success: true,
-        data,
+        data: refined.data,
+        agentMeta: {
+          score: refined.critique.score,
+          iterations: refined.iterations,
+          improved: refined.improved,
+          strengths: refined.critique.strengths,
+          weaknesses: refined.critique.weaknesses,
+        },
         usage: result.usage,
       },
       { status: 200 }

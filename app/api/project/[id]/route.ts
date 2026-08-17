@@ -108,7 +108,7 @@ export async function PATCH(
     const project = await Project.findOneAndUpdate(
       { _id: id, userId },
       { title: title.trim() },
-      { new: true }
+      { returnDocument: 'after' }
     );
 
     if (!project) {

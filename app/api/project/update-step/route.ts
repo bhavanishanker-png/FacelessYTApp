@@ -73,8 +73,8 @@ export async function POST(request: Request) {
       if (step === "subtitles" && !data.data && !data.settings) {
         return NextResponse.json({ error: "Subtitles step requires 'data' or 'settings'" }, { status: 400 });
       }
-      if (step === "editor" && !data.editedData) {
-        return NextResponse.json({ error: "Editor step requires 'editedData'" }, { status: 400 });
+      if (step === "editor" && !data.editedSubtitles && !data.editedData) {
+        return NextResponse.json({ error: "Editor step requires 'editedSubtitles'" }, { status: 400 });
       }
     }
 

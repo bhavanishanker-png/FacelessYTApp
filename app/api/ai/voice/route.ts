@@ -39,11 +39,32 @@ const VOICE_MAPPING: Record<string, string> = {
 // ─── Duration Estimator ───────────────────────────────────────
 
 function estimateDuration(text: string, speed: number): number {
-  // Average speaking rate: ~150 words per minute at 1.0x speed
   const wordCount = text.trim().split(/\s+/).length;
-  const minutesAtNormal = wordCount / 150;
-  const adjustedMinutes = minutesAtNormal / speed;
-  return Math.round(adjustedMinutes * 60); // seconds
+  return Math.round((wordCount / 150 / speed) * 60);
+}
+
+// ─── Script Chunker ───────────────────────────────────────────
+// Deepgram Aura TTS has a 2000-char limit per request.
+// Split on sentence boundaries so each chunk stays well under that.
+
+const DEEPGRAM_CHAR_LIMIT = 1900;
+
+function chunkScript(text: string): string[] {
+  const chunks: string[] = [];
+  // Split keeping the trailing punctuation attached to the sentence
+  const sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) ?? [text];
+
+  let current = "";
+  for (const sentence of sentences) {
+    if (current.length + sentence.length > DEEPGRAM_CHAR_LIMIT) {
+      if (current.trim()) chunks.push(current.trim());
+      current = sentence;
+    } else {
+      current += sentence;
+    }
+  }
+  if (current.trim()) chunks.push(current.trim());
+  return chunks;
 }
 
 // ─── Route Handler ────────────────────────────────────────────
@@ -105,14 +126,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Script has no speakable content" }, { status: 400 });
     }
 
-    // Deepgram limit is quite high, but let's keep a reasonable bound
-    if (cleanedScript.length > 30000) {
-      return NextResponse.json(
-        { error: `Script is too long (${cleanedScript.length} chars). Max is 30000 for TTS.` },
-        { status: 400 }
-      );
-    }
-
     await connectDB();
 
     const project = await Project.findOne({ _id: projectId, userId });
@@ -131,19 +144,22 @@ export async function POST(request: Request) {
     const deepgram = new DeepgramClient({ apiKey: process.env.DEEPGRAM_API_KEY });
     const modelId = VOICE_MAPPING[voice as string] || VOICE_MAPPING["male-deep"];
 
-    console.log(`[Voice Gen] Generating audio with Deepgram ${modelId}`);
+    const chunks = chunkScript(cleanedScript);
+    console.log(`[Voice Gen] ${modelId} — ${chunks.length} chunk(s), ${cleanedScript.length} chars total`);
 
     let audioBuffer: Buffer;
     try {
-      const response = await deepgram.speak.v1.audio.generate({
-        text: cleanedScript,
-        model: modelId,
-        encoding: "mp3"
-      });
-
-      const arrayBuffer = await response.arrayBuffer();
-      audioBuffer = Buffer.from(arrayBuffer);
-
+      const buffers: Buffer[] = [];
+      for (let i = 0; i < chunks.length; i++) {
+        console.log(`[Voice Gen] Chunk ${i + 1}/${chunks.length} (${chunks[i].length} chars)`);
+        const response = await deepgram.speak.v1.audio.generate({
+          text: chunks[i],
+          model: modelId,
+          encoding: "mp3",
+        });
+        buffers.push(Buffer.from(await response.arrayBuffer()));
+      }
+      audioBuffer = Buffer.concat(buffers);
     } catch (ttsError: any) {
       console.error("[Voice Gen] Deepgram API error:", ttsError.message);
       return NextResponse.json(

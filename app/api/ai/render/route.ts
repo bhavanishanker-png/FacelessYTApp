@@ -562,6 +562,15 @@ export async function POST(request: Request) {
     }
     const userId = (session.user as any).id;
 
+    const { checkRateLimit } = await import("@/lib/rateLimit");
+    const rl = await checkRateLimit(userId, "render", 3);
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetInMs / 1000)}s.` },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetInMs / 1000)) } }
+      );
+    }
+
     // 2. Parse body
     const body = await request.json();
     const { projectId, quality = "1080p" } = body;

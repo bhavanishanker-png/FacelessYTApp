@@ -44,23 +44,6 @@ export type AIResult<T = unknown> = AIResponse<T> | AIErrorResponse;
 // These interfaces define the JSON contract between AI and the app.
 // Each step route will narrow T to its specific shape.
 
-export interface IdeaOutput {
-  ideas: {
-    title: string;
-    description: string;
-    targetAudience: string;
-    viralPotential: "low" | "medium" | "high";
-  }[];
-}
-
-export interface HookOutput {
-  hooks: {
-    text: string;
-    style: "question" | "statistic" | "story" | "controversial" | "visual";
-    estimatedRetentionBoost: number;
-  }[];
-}
-
 export interface ScriptOutput {
   title: string;
   sections: {
