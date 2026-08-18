@@ -153,11 +153,13 @@ export async function runLeetCodePipeline(
   checkAbort(signal);
 
   // ── Step 2: Duplicate check ────────────────────────────────
+  // Match on steps.idea.userSelected which always contains problem.title,
+  // not on `title` which is an AI-generated YouTube title that won't match.
   const todayMidnight = new Date();
   todayMidnight.setUTCHours(0, 0, 0, 0);
   const existing = await Project.findOne({
     userId: botUserId,
-    title: { $regex: problem.title, $options: "i" },
+    "steps.idea.userSelected": { $regex: problem.title, $options: "i" },
     createdAt: { $gte: todayMidnight },
   });
   if (existing) {
@@ -186,10 +188,12 @@ export async function runLeetCodePipeline(
     temperature: 0.8,
   });
   const hookData = hookAI.success ? hookAI.data : null;
+  if (!hookAI.success) onStep(`⚠️ Hook AI failed: ${hookAI.error} — using fallback`);
   const selectedHook =
     hookData?.hooks?.[0]?.text ??
     `Most developers fail this ${problem.difficulty} LeetCode problem — here is the optimal solution.`;
-  onStep(`Hook locked in (score: ${hookData?.hooks?.[0]?.score ?? "–"})`);
+  const hookScore = hookData?.hooks?.[0]?.score;
+  onStep(`Hook locked in${hookScore ? ` (score: ${hookScore})` : ""}`);
 
   checkAbort(signal);
 
@@ -239,8 +243,35 @@ export async function runLeetCodePipeline(
     maxTokens: 3000,
     temperature: 0.5,
   });
-  const scenes = ((scenesAI.success ? scenesAI.data?.scenes : []) ?? []).slice(0, MAX_SCENES);
-  onStep(`${scenes.length} scenes generated`);
+
+  let scenes = ((scenesAI.success ? scenesAI.data?.scenes : []) ?? []).slice(0, MAX_SCENES);
+
+  if (!scenesAI.success) onStep(`⚠️ Scenes AI failed: ${scenesAI.error} — using fallback scenes`);
+
+  // Fallback: derive scenes from script sections so the pipeline never stalls
+  if (!scenes.length && scriptData?.sections?.length) {
+    const sectionPrompts: Record<string, string> = {
+      "Hook": `dramatic neon text title card, glowing code symbols, dark background, electric blue accents`,
+      "Problem Breakdown": `abstract diagram of the problem: input array with colored blocks, arrows, dark background, neon green`,
+      "Brute Force": `nested loops visualization, red X marks on slow path, binary tree or nested boxes, dark background`,
+      "Key Insight": `lightbulb moment: key pattern highlighted in neon, pointer or sliding window diagram, bright yellow accent`,
+      "Optimal Solution": `step-by-step algorithm flow, colored pointer arrows moving through array, dark background neon cyan`,
+      "Complexity Analysis": `Big-O graph: O(n) vs O(n²) curves, dark background, purple and orange gradient`,
+      "Pattern Takeaway": `checklist of patterns, glowing trophy icon, algorithmic pattern label cards, neon on dark`,
+    };
+    scenes = scriptData.sections.slice(0, MAX_SCENES).map((s, i) => ({
+      sceneNumber: i + 1,
+      narration: s.content.slice(0, 300),
+      visualDescription: s.label,
+      imagePrompt: sectionPrompts[s.label] ?? `abstract algorithm visualization scene ${i + 1}, dark background, neon accents`,
+      durationSeconds: s.durationSeconds ?? 30,
+      transition: "fade" as const,
+    }));
+    onStep(`Using ${scenes.length} fallback scenes from script sections`);
+  }
+
+  if (!scenes.length) throw new Error("Scene generation returned 0 scenes — cannot continue.");
+  onStep(`${scenes.length} scenes ready`);
 
   checkAbort(signal);
 
@@ -367,39 +398,43 @@ export async function runLeetCodePipeline(
 
   checkAbort(signal);
 
-  // ── Step 9: Subtitles ──────────────────────────────────────
+  // ── Step 9: Subtitles (optional — skipped gracefully on auth/rate errors) ──
   onStep("Transcribing with Groq Whisper...");
-  if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
-  const groq = new OpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: "https://api.groq.com/openai/v1" });
-  const audioDownload = await fetch(audioUrl);
-  if (!audioDownload.ok) throw new Error("Failed to download audio for transcription");
-  const audioFile = await toFile(audioDownload, "audio.mp3");
-  const transcription = await groq.audio.transcriptions.create({
-    file: audioFile, model: "whisper-large-v3",
-    response_format: "verbose_json", timestamp_granularities: ["segment", "word"],
-  });
+  let segments: { text: string; start: number; end: number }[] = [];
+  try {
+    if (!process.env.GROQ_API_KEY) throw new Error("GROQ_API_KEY not set");
+    const groq = new OpenAI({ apiKey: process.env.GROQ_API_KEY, baseURL: "https://api.groq.com/openai/v1" });
+    const audioDownload = await fetch(audioUrl);
+    if (!audioDownload.ok) throw new Error(`Failed to download audio: HTTP ${audioDownload.status}`);
+    const audioFile = await toFile(audioDownload, "audio.mp3");
+    const transcription = await groq.audio.transcriptions.create({
+      file: audioFile, model: "whisper-large-v3",
+      response_format: "verbose_json", timestamp_granularities: ["segment", "word"],
+    });
 
-  const words = transcription.words?.map((w: any) => ({ word: w.word, start: w.start, end: w.end })) ?? [];
-  const segments: { text: string; start: number; end: number }[] = [];
-  if (words.length > 0) {
-    let cur = { start: words[0].start, end: words[0].end, buf: [] as typeof words };
-    for (const w of words) {
-      if (cur.buf.length >= 5 || w.end - cur.start > 3) {
-        if (cur.buf.length) segments.push({ text: cur.buf.map((x) => x.word.trim()).join(" "), start: cur.start, end: cur.end });
-        cur = { start: w.start, end: w.end, buf: [] };
+    const words = transcription.words?.map((w: any) => ({ word: w.word, start: w.start, end: w.end })) ?? [];
+    if (words.length > 0) {
+      let cur = { start: words[0].start, end: words[0].end, buf: [] as typeof words };
+      for (const w of words) {
+        if (cur.buf.length >= 5 || w.end - cur.start > 3) {
+          if (cur.buf.length) segments.push({ text: cur.buf.map((x) => x.word.trim()).join(" "), start: cur.start, end: cur.end });
+          cur = { start: w.start, end: w.end, buf: [] };
+        }
+        cur.buf.push(w);
+        cur.end = w.end;
       }
-      cur.buf.push(w);
-      cur.end = w.end;
+      if (cur.buf.length) segments.push({ text: cur.buf.map((x) => x.word.trim()).join(" "), start: cur.start, end: cur.end });
+    } else {
+      segments.push(...(transcription.segments?.map((s: any) => ({ text: s.text, start: s.start, end: s.end })) ?? []));
     }
-    if (cur.buf.length) segments.push({ text: cur.buf.map((x) => x.word.trim()).join(" "), start: cur.start, end: cur.end });
-  } else {
-    segments.push(...(transcription.segments?.map((s: any) => ({ text: s.text, start: s.start, end: s.end })) ?? []));
+    onStep(`Subtitles: ${segments.length} segments`);
+  } catch (e: any) {
+    onStep(`⚠️ Transcription skipped: ${e.message} — video will render without subtitles`);
   }
 
-  project.steps.subtitles = { status: "completed", data: segments };
+  project.steps.subtitles = { status: segments.length ? "completed" : "pending", data: segments };
   project.markModified("steps.subtitles");
   await project.save();
-  onStep(`Subtitles: ${segments.length} segments`);
 
   // ── Step 10: Render ────────────────────────────────────────
   onStep("Triggering FFmpeg render...");

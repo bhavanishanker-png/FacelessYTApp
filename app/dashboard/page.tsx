@@ -9,7 +9,7 @@ import {
   Share2, Bell, Search, Plus, MoreVertical,
   Mic, Captions, ChevronRight, LogOut, X,
   Copy, Trash2, Pencil, ExternalLink, Loader2,
-  Command, Menu, Terminal, CheckCircle2, AlertCircle,
+  Command, Menu, Terminal, CheckCircle2, AlertCircle, ShieldCheck,
 } from "lucide-react";
 import { CreateProjectModal } from "@/components/CreateProjectModal";
 import { Button } from "@/components/ui/button";
@@ -65,6 +65,27 @@ export default function DashboardPage() {
   const [lcPanelOpen, setLcPanelOpen] = useState(false);
   const lcLogRef = useRef<HTMLDivElement>(null);
   const lcAbortRef = useRef<AbortController | null>(null);
+
+  // API key health check
+  type KeyResult = { key: string; label: string; ok: boolean; detail: string };
+  const [keysChecking, setKeysChecking] = useState(false);
+  const [keysResults, setKeysResults] = useState<KeyResult[] | null>(null);
+  const [keysPanelOpen, setKeysPanelOpen] = useState(false);
+
+  const checkApiKeys = async () => {
+    setKeysChecking(true);
+    setKeysPanelOpen(true);
+    setKeysResults(null);
+    try {
+      const res = await fetch("/api/health/keys");
+      const data = await res.json();
+      setKeysResults(data.results ?? []);
+    } catch (e: any) {
+      setKeysResults([{ key: "error", label: "Request failed", ok: false, detail: e.message }]);
+    } finally {
+      setKeysChecking(false);
+    }
+  };
 
   // Auto-scroll log to bottom
   useEffect(() => {
@@ -407,6 +428,19 @@ export default function DashboardPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* API Key Health */}
+          <button
+            onClick={checkApiKeys}
+            disabled={keysChecking}
+            title="Check all API keys"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border border-violet-500/30 text-violet-400 bg-violet-500/5 hover:bg-violet-500/10 hover:border-violet-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {keysChecking
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <ShieldCheck className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{keysChecking ? "Checking…" : "API Status"}</span>
+          </button>
 
           {/* LeetCode Daily */}
           <button
@@ -996,6 +1030,84 @@ export default function DashboardPage() {
                   className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
                 >
                   View project →
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── API Key Status Panel ── */}
+      <AnimatePresence>
+        {keysPanelOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="fixed bottom-6 right-6 z-50 w-full max-w-sm bg-[#0a0a0a] border border-white/[0.07] rounded-2xl shadow-2xl overflow-hidden"
+            style={{ right: lcPanelOpen ? "calc(24px + 28rem + 16px)" : "24px" }}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] bg-[#0d0d0d]">
+              <div className="flex items-center gap-2.5">
+                {keysChecking
+                  ? <Loader2 className="w-4 h-4 text-violet-400 animate-spin" />
+                  : keysResults?.every(r => r.ok)
+                  ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  : <AlertCircle className="w-4 h-4 text-amber-400" />}
+                <span className="text-sm font-semibold text-white">
+                  {keysChecking ? "Checking API keys..." : keysResults
+                    ? `${keysResults.filter(r => r.ok).length}/${keysResults.length} keys OK`
+                    : "API Status"}
+                </span>
+              </div>
+              <button
+                onClick={() => { setKeysPanelOpen(false); setKeysResults(null); }}
+                className="text-white/30 hover:text-white/60 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Results */}
+            <div className="px-3 py-3 space-y-1.5 max-h-80 overflow-y-auto">
+              {keysChecking && !keysResults && (
+                <div className="flex items-center justify-center py-8 text-white/20 text-xs">
+                  Running checks…
+                </div>
+              )}
+              {keysResults?.map((r) => (
+                <div
+                  key={r.key}
+                  className={`flex items-start gap-3 px-3 py-2.5 rounded-xl border ${
+                    r.ok
+                      ? "border-emerald-500/15 bg-emerald-500/5"
+                      : "border-red-500/15 bg-red-500/5"
+                  }`}
+                >
+                  <div className={`mt-0.5 shrink-0 ${r.ok ? "text-emerald-400" : "text-red-400"}`}>
+                    {r.ok
+                      ? <CheckCircle2 className="w-3.5 h-3.5" />
+                      : <AlertCircle className="w-3.5 h-3.5" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-semibold ${r.ok ? "text-white/80" : "text-red-300"}`}>{r.label}</p>
+                    <p className={`text-[11px] mt-0.5 truncate ${r.ok ? "text-white/30" : "text-red-400/70"}`}>{r.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Re-check footer */}
+            {keysResults && (
+              <div className="px-4 py-2.5 border-t border-white/[0.05] flex justify-end">
+                <button
+                  onClick={checkApiKeys}
+                  disabled={keysChecking}
+                  className="text-[11px] text-violet-400 hover:text-violet-300 font-semibold transition-colors disabled:opacity-50"
+                >
+                  Re-check
                 </button>
               </div>
             )}
