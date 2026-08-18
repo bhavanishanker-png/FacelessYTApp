@@ -140,16 +140,35 @@ function extractRetryAfter(error: unknown): number {
 
 // ─── Core: Raw Text Response ──────────────────────────────────
 
+// Retry delays for Claude 529 overloaded errors (ms)
+const OVERLOAD_RETRY_DELAYS = [3000, 6000, 12000];
+
+function isOverloaded(result: AIResult<string>): boolean {
+  return !result.success && result.error?.includes("529");
+}
+
 /**
  * Runs the scheduled provider, falling back to Groq if Claude can't answer —
  * bad/missing key, rate limit, outage, refusal, or empty response.
- * Set AI_FALLBACK=off to disable and surface Claude's error directly.
+ * On 529 overloaded, retries Claude up to 3 times with backoff before falling back.
+ * Set AI_FALLBACK=off to disable fallback and surface Claude's error directly.
  */
 export async function askAI(
   options: AIRequestOptions
 ): Promise<AIResult<string>> {
   const primary = activeProvider();
-  const result = await callProvider(primary, options);
+  let result = await callProvider(primary, options);
+
+  // Retry Claude on 529 overloaded before giving up
+  if (primary === "anthropic" && isOverloaded(result)) {
+    for (let i = 0; i < OVERLOAD_RETRY_DELAYS.length; i++) {
+      const delay = OVERLOAD_RETRY_DELAYS[i];
+      console.warn(`[ai] Claude overloaded — retry ${i + 1}/${OVERLOAD_RETRY_DELAYS.length} in ${delay / 1000}s...`);
+      await new Promise((r) => setTimeout(r, delay));
+      result = await callProvider("anthropic", options);
+      if (result.success || !isOverloaded(result)) break;
+    }
+  }
 
   if (result.success) return result;
 

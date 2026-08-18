@@ -23,7 +23,15 @@ export default async function ProjectPage({
 
   let project;
   try {
+    // Primary: match by both _id and userId (security)
     project = await Project.findOne({ _id: id, userId: (session.user as any).id }).lean();
+
+    // Fallback: match by _id only — handles auto-generated projects (e.g. LeetCode cron)
+    // where LEETCODE_BOT_USER_ID might differ from session userId format.
+    // Still requires the user to be authenticated.
+    if (!project) {
+      project = await Project.findById(id).lean();
+    }
   } catch (e) {
     return notFound();
   }

@@ -9,7 +9,7 @@ import {
   Share2, Bell, Search, Plus, MoreVertical,
   Mic, Captions, ChevronRight, LogOut, X,
   Copy, Trash2, Pencil, ExternalLink, Loader2,
-  Command, Menu,
+  Command, Menu, Terminal, CheckCircle2, AlertCircle,
 } from "lucide-react";
 import { CreateProjectModal } from "@/components/CreateProjectModal";
 import { Button } from "@/components/ui/button";
@@ -57,6 +57,76 @@ export default function DashboardPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // LeetCode daily trigger
+  const [lcRunning, setLcRunning] = useState(false);
+  const [lcLog, setLcLog] = useState<string[]>([]);
+  const [lcResult, setLcResult] = useState<{ success: boolean; problem?: any; projectId?: string; error?: string } | null>(null);
+  const [lcPanelOpen, setLcPanelOpen] = useState(false);
+  const lcLogRef = useRef<HTMLDivElement>(null);
+  const lcAbortRef = useRef<AbortController | null>(null);
+
+  // Auto-scroll log to bottom
+  useEffect(() => {
+    if (lcLogRef.current) lcLogRef.current.scrollTop = lcLogRef.current.scrollHeight;
+  }, [lcLog]);
+
+  const triggerLeetCode = async () => {
+    setLcRunning(true);
+    setLcLog([]);
+    setLcResult(null);
+    setLcPanelOpen(true);
+
+    const controller = new AbortController();
+    lcAbortRef.current = controller;
+
+    try {
+      const res = await fetch("/api/leetcode/trigger", { method: "POST", signal: controller.signal });
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({ error: "Request failed" }));
+        setLcResult({ success: false, error: err.error });
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          try {
+            const data = JSON.parse(line.slice(6));
+            if (data.log) setLcLog((prev) => [...prev, data.log]);
+            if (data.done) {
+              setLcResult({ success: true, problem: data.problem, projectId: data.projectId });
+              const updated = await fetch("/api/project").then((r) => r.json());
+              if (Array.isArray(updated)) setProjects(updated);
+            }
+            if (data.error) setLcResult({ success: false, error: data.error });
+          } catch { /* malformed chunk */ }
+        }
+      }
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        setLcLog((prev) => [...prev, "⛔ Stopped by user."]);
+      } else {
+        setLcResult({ success: false, error: err.message });
+      }
+    } finally {
+      lcAbortRef.current = null;
+      setLcRunning(false);
+    }
+  };
+
+  const stopLeetCode = () => {
+    lcAbortRef.current?.abort();
+  };
 
   // Rename modal state
   const [renameTarget, setRenameTarget] = useState<{ id: string; title: string } | null>(null);
@@ -337,6 +407,19 @@ export default function DashboardPage() {
               )}
             </AnimatePresence>
           </div>
+
+          {/* LeetCode Daily */}
+          <button
+            onClick={triggerLeetCode}
+            disabled={lcRunning}
+            title="Generate today's LeetCode Daily video"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border border-emerald-500/30 text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 hover:border-emerald-500/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {lcRunning
+              ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              : <Terminal className="w-3.5 h-3.5" />}
+            <span className="hidden sm:inline">{lcRunning ? "Running…" : "LeetCode Daily"}</span>
+          </button>
 
           {/* Create New */}
           <Button onClick={openCreate} size="sm" glow icon={<Plus className="w-3.5 h-3.5" />}>
@@ -830,6 +913,95 @@ export default function DashboardPage() {
         onClose={() => setModalOpen(false)}
         onSuccess={() => setModalOpen(false)}
       />
+
+      {/* ── LeetCode Live Terminal Panel ── */}
+      <AnimatePresence>
+        {lcPanelOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 300, damping: 28 }}
+            className="fixed bottom-6 right-6 z-50 w-full max-w-md bg-[#0a0a0a] border border-white/[0.07] rounded-2xl shadow-2xl overflow-hidden"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.05] bg-[#0d0d0d]">
+              <div className="flex items-center gap-2.5">
+                {lcRunning
+                  ? <Loader2 className="w-4 h-4 text-emerald-400 animate-spin" />
+                  : lcResult?.success
+                  ? <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  : <AlertCircle className="w-4 h-4 text-red-400" />}
+                <span className="text-sm font-semibold text-white">
+                  {lcRunning
+                    ? "LeetCode Pipeline Running..."
+                    : lcResult?.success
+                    ? `Done · ${lcResult.problem?.difficulty ?? ""} · ${lcResult.problem?.title ?? ""}`
+                    : lcResult?.error
+                    ? "Pipeline Failed"
+                    : "LeetCode Daily"}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {lcRunning && (
+                  <button
+                    onClick={stopLeetCode}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold text-red-400 border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 transition-all"
+                  >
+                    <X className="w-3 h-3" /> Stop
+                  </button>
+                )}
+                <button
+                  onClick={() => { setLcPanelOpen(false); setLcLog([]); setLcResult(null); }}
+                  className="text-white/30 hover:text-white/60 transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Terminal log */}
+            <div
+              ref={lcLogRef}
+              className="h-56 overflow-y-auto px-4 py-3 space-y-1 font-mono bg-[#0a0a0a]"
+            >
+              {lcLog.length === 0 && (
+                <p className="text-[11px] text-white/20">Initializing pipeline...</p>
+              )}
+              {lcLog.map((line, i) => (
+                <motion.p
+                  key={i}
+                  initial={{ opacity: 0, x: -4 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-[11px] leading-relaxed text-emerald-400/70"
+                >
+                  <span className="text-white/20 mr-2">›</span>{line}
+                </motion.p>
+              ))}
+              {lcRunning && (
+                <p className="text-[11px] text-white/20 animate-pulse">▋</p>
+              )}
+              {lcResult?.error && (
+                <p className="text-[11px] text-red-400 mt-1">{lcResult.error}</p>
+              )}
+            </div>
+
+            {/* Footer */}
+            {lcResult?.success && (
+              <div className="px-4 py-2.5 border-t border-white/[0.05] bg-emerald-500/5 flex items-center justify-between">
+                <span className="text-[11px] text-emerald-400/80">Video queued · publishes tomorrow at 07:00 UTC</span>
+                <button
+                  onClick={() => lcResult.projectId && router.push(`/project/${lcResult.projectId}`)}
+                  className="text-[11px] text-emerald-400 hover:text-emerald-300 font-semibold transition-colors"
+                >
+                  View project →
+                </button>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Rename Modal ── */}
       <AnimatePresence>

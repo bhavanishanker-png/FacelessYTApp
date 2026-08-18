@@ -234,7 +234,7 @@ async function executeRenderPipeline(
 
     // ─── Phase 2: Generate image segments with Ken Burns ──────
     const segmentPaths: string[] = [];
-    const transitionDur = 0.5; // cross-fade seconds
+
 
     for (let i = 0; i < images.length; i++) {
       const img = images[i];
@@ -555,25 +555,34 @@ async function executeRenderPipeline(
 
 export async function POST(request: Request) {
   try {
-    // 1. Auth
-    const session = await getServerSession(authOptions);
-    if (!session?.user || !(session.user as any).id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    const userId = (session.user as any).id;
-
-    const { checkRateLimit } = await import("@/lib/rateLimit");
-    const rl = await checkRateLimit(userId, "render", 3);
-    if (!rl.allowed) {
-      return NextResponse.json(
-        { error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetInMs / 1000)}s.` },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetInMs / 1000)) } }
-      );
-    }
-
-    // 2. Parse body
+    // 1. Parse body first (needed to get userId for cron bypass)
     const body = await request.json();
-    const { projectId, quality = "1080p" } = body;
+    const { projectId, quality = "1080p", userId: bodyUserId } = body;
+
+    // Auth — normal session for users, cron-secret header for automation
+    const cronSecret = request.headers.get("x-cron-secret");
+    const isCronCall = !!process.env.CRON_SECRET && cronSecret === process.env.CRON_SECRET;
+
+    let userId: string;
+    if (isCronCall) {
+      if (!bodyUserId) return NextResponse.json({ error: "userId required for cron calls" }, { status: 400 });
+      userId = bodyUserId;
+    } else {
+      const session = await getServerSession(authOptions);
+      if (!session?.user || !(session.user as any).id) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      userId = (session.user as any).id;
+
+      const { checkRateLimit } = await import("@/lib/rateLimit");
+      const rl = await checkRateLimit(userId, "render", 3);
+      if (!rl.allowed) {
+        return NextResponse.json(
+          { error: `Rate limit exceeded. Try again in ${Math.ceil(rl.resetInMs / 1000)}s.` },
+          { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetInMs / 1000)) } }
+        );
+      }
+    }
 
     if (!projectId) {
       return NextResponse.json({ error: "projectId is required" }, { status: 400 });
@@ -608,8 +617,9 @@ export async function POST(request: Request) {
     const subtitleSettings = project.steps?.subtitles?.settings;
     const animationData = project.steps?.animation?.data;
 
-    if (!images.length) {
-      return NextResponse.json({ error: "No images found. Complete the Images step first." }, { status: 400 });
+    const validImages = images.filter((img: any) => img.imageUrl && img.imageUrl.trim() !== "");
+    if (!validImages.length) {
+      return NextResponse.json({ error: "No valid images found. Complete the Images step first." }, { status: 400 });
     }
     if (!audioUrl) {
       return NextResponse.json({ error: "No audio found. Complete the Voice step first." }, { status: 400 });
@@ -642,7 +652,7 @@ export async function POST(request: Request) {
       jobId,
       projectId,
       quality,
-      images,
+      validImages,
       scenes,
       audioUrl,
       subtitles,
