@@ -1,16 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { Cormorant_Garamond } from "next/font/google";
 import "./globals.css";
+
+const cormorant = Cormorant_Garamond({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
 import { Providers } from "@/components/Providers";
 import { InteractiveBackground } from "@/components/InteractiveBackground";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800", "900"],
-  display: "swap",
-  preload: true,
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -46,7 +48,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} ${cormorant.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full w-full bg-transparent text-[#e5e2e1] antialiased selection:bg-[#c0c1ff]/20 overflow-x-hidden">
         <InteractiveBackground />
         <Providers>
