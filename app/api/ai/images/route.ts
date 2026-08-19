@@ -78,6 +78,15 @@ async function generateViaPollinationsWithRetry(
   return { imageUrl: "", error: "Pollinations exhausted retries" };
 }
 
+// ─── Provider-specific Pollinations model map ─────────────────
+
+const PROVIDER_POLLINATIONS_MODEL: Record<string, string | null> = {
+  "auto": null, // use HF → Pollinations fallback
+  "pollinations-flux": "flux",
+  "pollinations-realism": "flux-realism",
+  "pollinations-pro": "flux-pro",
+};
+
 // ─── Single Image Generator (HuggingFace → Pollinations fallback) ──
 
 async function generateSingleImage(
@@ -85,13 +94,40 @@ async function generateSingleImage(
   style: ImageStyle,
   projectId: string,
   sceneId: string,
+  provider = "auto",
   retries = 2
 ): Promise<{ imageUrl: string; error?: string }> {
   const apiKey = process.env.HF_TOKEN ?? process.env.HUGGINGFACE_API_KEY;
   const augmentedPrompt = `${prompt}. ${STYLE_MODIFIERS[style]}. No text, watermarks, or logos.`;
   const seed = Math.floor(Math.random() * 2147483647);
 
-  // ── HuggingFace (primary) ─────────────────────────────────────
+  // ── Direct Pollinations (when provider is not "auto") ────────
+  const pollinationsModel = PROVIDER_POLLINATIONS_MODEL[provider];
+  if (provider !== "auto" && pollinationsModel !== undefined) {
+    const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(augmentedPrompt)}?width=1280&height=720&nologo=true&enhance=true&model=${pollinationsModel}&seed=${seed}`;
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      try {
+        const response = await fetch(url, { headers: { "User-Agent": "Mozilla/5.0" } });
+        if (response.status === 429) {
+          const waitMs = parseInt(response.headers.get("retry-after") ?? "30", 10) * 1000;
+          if (attempt < 2) { await new Promise((r) => setTimeout(r, waitMs)); continue; }
+          return { imageUrl: "", error: "Pollinations rate limit" };
+        }
+        if (!response.ok) throw new Error(`Pollinations ${response.status}`);
+        const buffer = Buffer.from(await response.arrayBuffer());
+        const { uploadBufferToCloudinary } = await import("@/lib/storage");
+        const result = await uploadBufferToCloudinary(buffer, `faceless-yt/projects/${projectId}/images`, "image", sceneId);
+        console.log(`[Image Gen] Pollinations (${pollinationsModel}) success for ${sceneId}`);
+        return { imageUrl: result.url };
+      } catch (err: any) {
+        if (attempt < 2) { await new Promise((r) => setTimeout(r, 5000 * (attempt + 1))); continue; }
+        return { imageUrl: "", error: err.message };
+      }
+    }
+    return { imageUrl: "", error: "Pollinations exhausted retries" };
+  }
+
+  // ── HuggingFace (primary, only for "auto") ────────────────────
   if (apiKey) {
     for (let attempt = 0; attempt <= retries; attempt++) {
       try {
@@ -166,7 +202,8 @@ async function generateImagesBackground(
   projectId: string,
   userId: string,
   scenes: { sceneId: string; prompt: string }[],
-  style: ImageStyle
+  style: ImageStyle,
+  provider = "auto"
 ) {
   const IMAGE_GAP_MS = 3000;
 
@@ -186,7 +223,7 @@ async function generateImagesBackground(
         status = "failed";
         error = "No prompt provided";
       } else {
-        const result = await generateSingleImage(prompt, style, projectId, sceneId);
+        const result = await generateSingleImage(prompt, style, projectId, sceneId, provider);
         imageUrl = result.imageUrl;
         if (result.error) { status = "failed"; error = result.error; }
       }
@@ -279,7 +316,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { projectId, scenes, style = "cinematic", sceneId } = body;
+    const { projectId, scenes, style = "cinematic", sceneId, provider = "auto" } = body;
 
     if (!projectId) {
       return NextResponse.json({ error: "projectId is required" }, { status: 400 });
@@ -308,7 +345,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: `Scene ${sceneId} not found` }, { status: 404 });
       }
 
-      const result = await generateSingleImage(sceneToRegen.prompt, style, projectId, sceneId);
+      const result = await generateSingleImage(sceneToRegen.prompt, style, projectId, sceneId, provider);
 
       const updatedImages = existingImages.map((img: any) =>
         img.sceneId === sceneId
@@ -351,7 +388,7 @@ export async function POST(request: Request) {
     await project.save();
 
     // Fire and forget — Node.js continues the async work after response is sent
-    generateImagesBackground(projectId, userId, scenesPayload, style).catch(console.error);
+    generateImagesBackground(projectId, userId, scenesPayload, style, provider).catch(console.error);
 
     return NextResponse.json({
       success: true,

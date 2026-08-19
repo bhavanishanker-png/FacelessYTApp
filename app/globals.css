@@ -82,7 +82,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
   --font-mono: var(--font-geist-mono), "JetBrains Mono", monospace;
-  --font-display: var(--font-display), Georgia, serif;
 
   /* Shimmer animation for skeleton loading */
   --animate-shimmer: shimmer 2s linear infinite;
@@ -193,8 +192,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Display / Heading Font (Cormorant Garamond) ── */
-h1, h2, h3 {
+/* ── Ensure all form elements inherit font ── */
+button, input, textarea, select {
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ── Display / Heading Font (Cormorant Garamond) — only top-level headings ── */
+h1 {
   font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: -0.01em;

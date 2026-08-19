@@ -14,12 +14,16 @@ import {
   Paintbrush,
   Minimize2,
   Wand2,
+  Zap,
+  Star,
+  Cpu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────
 
 type ImageStyle = "cinematic" | "anime" | "realistic" | "minimal";
+type ImageProvider = "auto" | "pollinations-flux" | "pollinations-realism" | "pollinations-pro";
 
 interface SceneInput {
   sceneNumber?: number;
@@ -45,6 +49,55 @@ interface Props {
   onAutoSave?: (data: any) => void;
   onApprove: (images?: GeneratedImage[]) => Promise<void>;
 }
+
+// ─── Model Options ────────────────────────────────────────────
+
+const MODEL_OPTIONS: {
+  value: ImageProvider;
+  label: string;
+  icon: React.ElementType;
+  color: string;
+  gradient: string;
+  desc: string;
+  badge?: string;
+}[] = [
+  {
+    value: "auto",
+    label: "HuggingFace SD3",
+    icon: Cpu,
+    color: "text-indigo-400",
+    gradient: "from-indigo-500/20 to-violet-500/10",
+    desc: "SD3 primary, Pollinations fallback",
+    badge: "Best",
+  },
+  {
+    value: "pollinations-flux",
+    label: "Flux",
+    icon: Zap,
+    color: "text-yellow-400",
+    gradient: "from-yellow-500/20 to-amber-500/10",
+    desc: "Fast & free via Pollinations",
+    badge: "Free",
+  },
+  {
+    value: "pollinations-realism",
+    label: "Flux Realism",
+    icon: ImageIcon,
+    color: "text-emerald-400",
+    gradient: "from-emerald-500/20 to-teal-500/10",
+    desc: "Photorealistic Pollinations model",
+    badge: "Free",
+  },
+  {
+    value: "pollinations-pro",
+    label: "Flux Pro",
+    icon: Star,
+    color: "text-rose-400",
+    gradient: "from-rose-500/20 to-pink-500/10",
+    desc: "Highest quality Pollinations model",
+    badge: "Free",
+  },
+];
 
 // ─── Style Options ────────────────────────────────────────────
 
@@ -139,6 +192,7 @@ export const ImagesStepPanel = ({
   onApprove,
 }: Props) => {
   const [style, setStyle] = useState<ImageStyle>(stepData?.style || "cinematic");
+  const [provider, setProvider] = useState<ImageProvider>(stepData?.provider || "auto");
   const [images, setImages] = useState<GeneratedImage[]>(() => {
     if (stepData?.data && Array.isArray(stepData.data) && stepData.data.length > 0) {
       return stepData.data;
@@ -237,7 +291,7 @@ export const ImagesStepPanel = ({
       const res = await fetch("/api/ai/images", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ projectId, scenes: buildScenesPayload(), style }),
+        body: JSON.stringify({ projectId, scenes: buildScenesPayload(), style, provider }),
       });
 
       const result = await res.json();
@@ -286,6 +340,7 @@ export const ImagesStepPanel = ({
             projectId,
             sceneId,
             style,
+            provider,
           }),
         });
 
@@ -382,52 +437,56 @@ export const ImagesStepPanel = ({
         )}
       </AnimatePresence>
 
-      {/* ── Style Picker ── */}
-      <div className="mb-6">
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/25 mb-3">
-          Visual Style
-        </p>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {STYLE_OPTIONS.map((opt) => {
-            const isActive = style === opt.value;
-            const Icon = opt.icon;
-            return (
-              <motion.button
-                key={opt.value}
-                onClick={() => setStyle(opt.value)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                className={cn(
-                  "relative p-3.5 rounded-xl border transition-all duration-300 text-left group",
-                  isActive
-                    ? `bg-gradient-to-br ${opt.gradient} border-white/15`
-                    : "bg-white/[0.02] border-white/[0.06] hover:border-white/10 hover:bg-white/[0.03]"
-                )}
-              >
-                <div className="flex items-center gap-2.5 mb-1.5">
-                  <Icon className={cn("w-4 h-4", isActive ? opt.color : "text-white/25")} />
-                  <span
-                    className={cn(
-                      "text-[12px] font-bold",
-                      isActive ? "text-white" : "text-white/40"
-                    )}
-                  >
-                    {opt.label}
-                  </span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="styleCheck"
-                      className="ml-auto w-4 h-4 rounded-full bg-white/10 flex items-center justify-center"
-                    >
-                      <Check className="w-2.5 h-2.5 text-white" />
-                    </motion.div>
-                  )}
-                </div>
-                <p className="text-[10px] text-white/20 font-medium">{opt.desc}</p>
-              </motion.button>
-            );
-          })}
-        </div>
+      {/* ── Settings Toolbar ── */}
+      <div className="mb-4 flex items-center gap-2 p-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex-wrap">
+        {/* Style group */}
+        <span className="text-[9px] font-bold uppercase tracking-widest text-white/20 pl-1 pr-0.5 shrink-0">Style</span>
+        {STYLE_OPTIONS.map((opt) => {
+          const isActive = style === opt.value;
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setStyle(opt.value)}
+              title={opt.desc}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150",
+                isActive
+                  ? `bg-white/10 ${opt.color} border border-white/15`
+                  : "text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
+              )}
+            >
+              <Icon className="w-3 h-3" />
+              {opt.label}
+            </button>
+          );
+        })}
+
+        {/* Divider */}
+        <div className="w-px h-5 bg-white/[0.08] mx-1 shrink-0" />
+
+        {/* Model group */}
+        <span className="text-[9px] font-bold uppercase tracking-widest text-white/20 pr-0.5 shrink-0">Model</span>
+        {MODEL_OPTIONS.map((opt) => {
+          const isActive = provider === opt.value;
+          const Icon = opt.icon;
+          return (
+            <button
+              key={opt.value}
+              onClick={() => setProvider(opt.value)}
+              title={opt.desc}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all duration-150",
+                isActive
+                  ? `bg-white/10 ${opt.color} border border-white/15`
+                  : "text-white/30 hover:text-white/55 hover:bg-white/[0.05]"
+              )}
+            >
+              <Icon className="w-3 h-3" />
+              {opt.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Generate Button ── */}
